@@ -28,7 +28,7 @@ class E160_environment:
         # setup xbee communication
         if (self.robot_mode == "HARDWARE MODE"):
             self.serial_port = serial.Serial('/dev/tty.usbserial-DN02Z6QQ', 9600)
-            print" Setting up serial port"
+            print("Setting up serial port")
             try:
                 self.xbee = XBee(self.serial_port)
             except:

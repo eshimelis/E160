@@ -1,5 +1,5 @@
 import math
-from Tkinter import *
+from tkinter import *
 from E160_robot import *
 from PIL import Image, ImageTk
 
@@ -36,6 +36,17 @@ class E160_graphics:
         # add stop button
         self.track_point_button = Button(self.tk, text="Quit", anchor="s", wraplength=100, command=self.quit).pack()
 
+        # add distance sensor measurements
+        self.distance_measurements = Label(self.tk, text="Test")
+        self.distance_measurements.pack()
+
+        # arrow input
+        self.tk.bind('<Up>', self.up_arrow_key_input)
+        self.tk.bind('<Down>', self.down_arrow_key_input)
+        self.tk.bind('<Left>', self.left_arrow_key_input)
+        self.tk.bind('<Right>',  self.right_arrow_key_input)
+        self.tk.bind('<KeyRelease>', self.key_released)
+# 
         # draw static environment
         for w in self.environment.walls:
             self.draw_wall(w)
@@ -131,7 +142,7 @@ class E160_graphics:
         desired_points = self.reverse_scale_points([float(event.x), float(event.y)], self.scale)
         robot = self.environment.robots[0]
         robot.state_des.set_state(desired_points[0],desired_points[1],0)
-        print "New desired robot state", robot.state_des.x, robot.state_des.y
+        print("New desired robot state", robot.state_des.x, robot.state_des.y)
 
 
     def send_robot_commands(self):
@@ -166,8 +177,32 @@ class E160_graphics:
             robot.set_manual_control_motors(self.R, self.L)
 
 
+    def up_arrow_key_input(self, event):
+    	self.forward_control.set(25)
+    	self.rotate_control.set(0)
 
+    def down_arrow_key_input(self, event):
+    	self.forward_control.set(-25)
+    	self.rotate_control.set(0)
 
+    def left_arrow_key_input(self, event):
+    	self.forward_control.set(0)
+    	self.rotate_control.set(-20)
+
+    def right_arrow_key_input(self, event):
+        self.forward_control.set(0)
+        self.rotate_control.set(20)
+    
+    def key_released(self, event):
+        self.forward_control.set(0)
+        self.rotate_control.set(0)
+
+    def update_sensor_readings(self, distance):
+
+        outputText = "Front: " + str(distance[0]) + "\nLeft: " + str(distance[1]) + "\nRight: " + str(distance[2])
+
+        self.distance_measurements.config(text = outputText)
+        # self.distance_measurements.after(100, self.update_sensor_readings(distance))
 
     # called at every iteration of main loop
     def update(self):
@@ -184,6 +219,7 @@ class E160_graphics:
 
         # update the graphics
         self.tk.update()
+        self.update_sensor_readings([round(self.environment.robots[0].front_dist), self.environment.robots[0].left_dist, self.environment.robots[0].right_dist])
 
         # check for gui buttons
         self.get_inputs()

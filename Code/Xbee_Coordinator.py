@@ -1,6 +1,6 @@
 import serial
 import time
-s
+
 
 serial_port = serial.Serial('/dev/tty.usbserial-DN02BDUM', 9600)
 
