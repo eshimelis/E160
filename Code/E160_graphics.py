@@ -99,14 +99,13 @@ class E160_graphics:
     def draw_robot(self, robot):
 
         # gif update
-        robot.tkimage = ImageTk.PhotoImage(robot.robot_gif.rotate(180/3.14*robot.state.theta))
-        robot.image = self.canvas.create_image(robot.state.x, robot.state.y, image=robot.tkimage)
-        robot_points = self.scale_points([robot.state.x, robot.state.y], self.scale)
+        robot.tkimage = ImageTk.PhotoImage(robot.robot_gif.rotate(180/3.14*robot.state_est.theta))
+        robot.image = self.canvas.create_image(robot.state_est.x, robot.state_est.y, image=robot.tkimage)
+        robot_points = self.scale_points([robot.state_est.x, robot.state_est.y], self.scale)
         self.canvas.coords(robot.image, *robot_points)
 
     def get_inputs(self):
         pass
-
 
 
     def track_point(self):
