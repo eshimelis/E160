@@ -46,7 +46,7 @@ class E160_graphics:
         self.tk.bind('<Left>', self.left_arrow_key_input)
         self.tk.bind('<Right>',  self.right_arrow_key_input)
         self.tk.bind('<KeyRelease>', self.key_released)
-# 
+ 
         # draw static environment
         for w in self.environment.walls:
             self.draw_wall(w)
