@@ -211,16 +211,18 @@ class E160_robot:
         delta_s = 0
         delta_theta = 0
 
-        encoder_delta_left = self.last_encoder_measurements[0] - encoder_measurements[0]
-        encoder_delta_right = self.last_encoder_measurements[1] - encoder_measurements[1]
+        encoder_delta_left = encoder_measurements[0] - self.last_encoder_measurements[0]
+        encoder_delta_right = encoder_measurements[1] - self.last_encoder_measurements[1]
+
+        print(encoder_delta_left)
 
         # check for sudden encoder jumps (should only occur during start up)
         if encoder_delta_left > 1000 or encoder_delta_left > 1000:
             delta_s = 0
             delta_theta = 0
         else:
-            delta_s_left = encoder_delta_left*(math.pi*self.wheel_radius*2)/self.encoder_resolution
-            delta_s_right = encoder_delta_right*(math.pi*self.wheel_radius*2)/self.encoder_resolution
+            delta_s_left = float(encoder_delta_left)*(math.pi*self.wheel_radius*2)/self.encoder_resolution
+            delta_s_right = float(encoder_delta_right)*(math.pi*self.wheel_radius*2)/self.encoder_resolution
 
             delta_s = (delta_s_left + delta_s_right)/2
             delta_theta = (delta_s_left - delta_s_right)/(2*self.radius)
@@ -238,6 +240,6 @@ class E160_robot:
         delta_y = delta_s * math.sin(state.theta + delta_theta/2)
 
         # minus because robot is backwards
-        state.set_state(state.x - delta_x, state.y - delta_y, state.theta - delta_theta)
+        state.set_state(state.x + delta_x, state.y + delta_y, state.theta + delta_theta)
 
         return state
