@@ -1,4 +1,5 @@
-# E160
-Autonomous robot navigation code and reports
+# E160- Autonomous Robot Navigation
 
-![alt text](https://raw.githubusercontent.com/eshimelis/e160/master/Videos/Images/DSCF1948.jpg)
+Team #XX Source code, labs, and reports
+
+![alt text](https://raw.githubusercontent.com/eshimelis/e160/master/Images/DSCF1948.jpg)
