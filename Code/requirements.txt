@@ -1,0 +1,10 @@
+Django==2.0.2
+future==0.16.0
+image==1.5.17
+iso8601==0.1.12
+Pillow==5.0.0
+pyserial==3.4
+pytz==2017.3
+PyYAML==3.12
+serial==0.0.38
+XBee==2.3.1
