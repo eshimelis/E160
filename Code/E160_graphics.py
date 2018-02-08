@@ -33,8 +33,14 @@ class E160_graphics:
         # add stop button
         self.track_point_button = Button(self.tk, text="Stop", anchor="s", wraplength=100, command=self.stop).pack()
 
-        # add stop button
+        # add quit button
         self.track_point_button = Button(self.tk, text="Quit", anchor="s", wraplength=100, command=self.quit).pack()
+
+        # add quit button
+        self.move_button = Button(self.tk, text="Move Forward", anchor="s", wraplength=100, command=self.move_forward).pack()
+        self.move_distance = Entry(self.tk)
+        self.move_distance.pack()
+        self.goal_distance = 0
 
         # add distance sensor measurements
         self.distance_measurements = Label(self.tk, text="Test")
@@ -136,6 +142,10 @@ class E160_graphics:
         self.rotate_control.set(0)
         self.gui_stopped = True
 
+    def move_forward(self):
+        self.goal_distance = self.environment.robots[0].state_est.x + float(self.move_distance.get())
+        self.forward_control.set(10)
+
 
     def callback(self, event):
         desired_points = self.reverse_scale_points([float(event.x), float(event.y)], self.scale)
@@ -210,6 +220,12 @@ class E160_graphics:
         for r in self.environment.robots:
             self.draw_robot(r)
 
+        robot_state = self.environment.robots[0].state_est
+        
+        if robot_state.x > float(self.goal_distance):
+            self.forward_control.set(0)
+        
+        print(robot_state.x)
         # draw particles
 
 
