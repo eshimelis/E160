@@ -143,8 +143,11 @@ class E160_graphics:
         self.gui_stopped = True
 
     def move_forward(self):
+        self.environment.control_mode = "MOVE FORWARD MODE"
         self.goal_distance = self.environment.robots[0].state_est.x + float(self.move_distance.get())
-        self.forward_control.set(10)
+        # self.forward_control.set(10)
+
+        self.environment.robots[0].state_des.set_state(self.environment.robots[0].state_est.x + float(self.move_distance.get()), 0, 0)
 
 
     def callback(self, event):
@@ -221,11 +224,14 @@ class E160_graphics:
             self.draw_robot(r)
 
         robot_state = self.environment.robots[0].state_est
+        des_robot_state = self.environment.robots[0].state_des
+
+        print("Estimated State: (", robot_state.x, ", ", robot_state.y, ", ", robot_state.theta, ")")
+        print("Desired State: (", robot_state.x, ", ", robot_state.y, ", ", robot_state.theta, ")\n")
         
-        if robot_state.x > float(self.goal_distance):
-            self.forward_control.set(0)
+
+        #     self.forward_control.set(0)
         
-        print(robot_state.x)
         # draw particles
 
 

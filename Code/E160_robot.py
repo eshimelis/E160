@@ -24,6 +24,7 @@ class E160_robot:
 
         self.last_measurements = []
         self.MAX_PAST_MEASUREMENTS = 10
+        self.last_move_forward_measurements = []
 
         self.robot_id = robot_id
         self.manual_control_left_motor = 0
@@ -45,6 +46,7 @@ class E160_robot:
 
         self.control_effort = 0
         self.error = 0
+        self.move_forward_error = 0
 
     def update(self, deltaT):
 
@@ -137,6 +139,27 @@ class E160_robot:
             
             self.error = range_measurements[0] - desiredDistance
             self.control_effort = KPGain * self.error + KIGain*sum(integralError)
+
+            R = self.control_effort
+            L = self.control_effort
+
+        elif self.environment.control_mode == "MOVE FORWARD MODE":
+            
+            KPGain = 100
+            KIGain = 10
+            self.move_forward_error = self.state_des.x - self.state_est.x
+
+            # keep track of measurement
+            if len(self.last_move_forward_measurements) < self.MAX_PAST_MEASUREMENTS:
+                self.last_move_forward_measurements.append(self.move_forward_error)
+
+            else: 
+                self.last_move_forward_measurements.pop(0)
+                self.last_move_forward_measurements.append(self.move_forward_error)
+
+            # integralError = [x[0] - desiredDistance for x in self.last_measurements]
+            
+            self.control_effort = KPGain *self.move_forward_error + KIGain*sum(self.last_move_forward_measurements)
 
             R = self.control_effort
             L = self.control_effort
