@@ -61,8 +61,7 @@ class E160_graphics:
         for r in self.environment.robots:
             self.initial_draw_robot(r)
 
-
-
+    # draws walls on gui
     def draw_wall(self, wall):
 
         wall_points = self.scale_points(wall.points, self.scale)
@@ -81,7 +80,6 @@ class E160_graphics:
 
         return scaled_points
 
-
     def reverse_scale_points(self, points, scale):
         reverse_scaled_points = []
         for i in range(len(points)-1):
@@ -95,12 +93,9 @@ class E160_graphics:
 
         return reverse_scaled_points
 
-
     def initial_draw_robot(self, robot):
-
         # open image
         robot.robot_gif = Image.open("E160_robot_image.gif").convert('RGBA')
-
 
     def draw_robot(self, robot):
 
@@ -112,7 +107,6 @@ class E160_graphics:
 
     def get_inputs(self):
         pass
-
 
     def track_point(self):
         self.environment.control_mode = "AUTONOMOUS CONTROL MODE"
@@ -149,13 +143,11 @@ class E160_graphics:
 
         self.environment.robots[0].state_des.set_state(self.environment.robots[0].state_est.x + float(self.move_distance.get()), 0, 0)
 
-
     def callback(self, event):
         desired_points = self.reverse_scale_points([float(event.x), float(event.y)], self.scale)
         robot = self.environment.robots[0]
         robot.state_des.set_state(desired_points[0],desired_points[1],0)
         print("New desired robot state", robot.state_des.x, robot.state_des.y)
-
 
     def send_robot_commands(self):
 
@@ -188,7 +180,6 @@ class E160_graphics:
             robot = self.environment.robots[0]
             robot.set_manual_control_motors(self.R, self.L)
 
-
     def up_arrow_key_input(self, event):
     	self.forward_control.set(25)
     	self.rotate_control.set(0)
@@ -210,15 +201,12 @@ class E160_graphics:
         self.rotate_control.set(0)
 
     def update_sensor_readings(self, distance):
-
+        # update reading on gui
         outputText = "Front: " + str(distance[0]) + "\nLeft: " + str(distance[1]) + "\nRight: " + str(distance[2])
-
         self.distance_measurements.config(text = outputText)
-        # self.distance_measurements.after(100, self.update_sensor_readings(distance))
 
     # called at every iteration of main loop
     def update(self):
-
         # draw robots
         for r in self.environment.robots:
             self.draw_robot(r)
@@ -228,10 +216,7 @@ class E160_graphics:
 
         print("Estimated State: (", robot_state.x, ", ", robot_state.y, ", ", robot_state.theta, ")")
         print("Desired State: (", robot_state.x, ", ", robot_state.y, ", ", robot_state.theta, ")\n")
-        
-
-        #     self.forward_control.set(0)
-        
+                
         # draw particles
 
 

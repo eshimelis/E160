@@ -1,4 +1,3 @@
-
 from E160_state import *
 import math
 import datetime
@@ -204,7 +203,7 @@ class E160_robot:
 
     def make_headers(self):
         f = open(self.file_name, 'a+')
-        f.write('{0} {1:^1} {2:^1} {3:^1} {4:^1} {5:^1} {6:^1} \n'.format('F,', 'L,', 'R,', 'RW,', 'LW,', 'CE,', 'E'))
+        f.write('{0} {1:^1} {2:^1} {3:^1} {4:^1} {5:^1} {6:^1} \n'.format('FDist,', 'LDist,', 'RDist,', 'RW,', 'LW,', 'CE,', 'E'))
         f.close()
 
 

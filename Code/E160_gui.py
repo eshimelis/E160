@@ -1,5 +1,3 @@
-
-
 import random
 import time
 from E160_environment import *
