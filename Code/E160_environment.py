@@ -27,12 +27,14 @@ class E160_environment:
 
         # setup xbee communication
         if (self.robot_mode == "HARDWARE MODE"):
-            self.serial_port = serial.Serial('/dev/tty.usbserial-DN02Z6QQ', 9600)
-            print("Setting up serial port")
+
             try:
+                self.serial_port = serial.Serial('/dev/tty.usbserial-DN02Z6QQ', 9600)
                 self.xbee = XBee(self.serial_port)
+                print("Setting up serial port")
             except:
-                print("Couldn't find the serial port")
+                print("Serial port/XBee not found")
+
 
         # Setup the robots
         self.num_robots = 1
@@ -44,7 +46,6 @@ class E160_environment:
             self.robots.append(r)
 
     def update_robots(self, deltaT):
-
         # loop over all robots and update their state
         for r in self.robots:
 
@@ -53,7 +54,6 @@ class E160_environment:
 
 
     def log_data(self):
-
         # loop over all robots and update their state
         for r in self.robots:
             r.log_data()
