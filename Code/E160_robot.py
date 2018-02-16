@@ -1,15 +1,24 @@
 from E160_state import *
 import math
 import datetime
+import logging
+import csv
 
 class E160_robot:
 
     def __init__(self, environment, address, robot_id):
         self.environment = environment
+        
         self.state_est = E160_state()
         self.state_est.set_state(0,0,0)
+        
         self.state_des = E160_state()
         self.state_des.set_state(0,0,0)
+
+        self.state_error = E160_state()
+        self.state_error.set_state(0,0,0)
+
+        self.previous_state_error = []
 
         self.v = 0.05
         self.w = 0.1
@@ -18,18 +27,26 @@ class E160_robot:
         self.radius = 0.1404/2
         self.wheel_radius = .0693/2
 
+        self.sl = 0
+        self.sr = 0
+
         self.address = address
         self.ID = self.address.encode().__str__()[-1]
 
-        self.last_measurements = []
         self.MAX_PAST_MEASUREMENTS = 10
+
+        self.last_measurements = []
         self.last_move_forward_measurements = []
 
         self.robot_id = robot_id
+
         self.manual_control_left_motor = 0
         self.manual_control_right_motor = 0
 
-        self.file_name = 'Log/Bot' + str(self.robot_id) + '_' + datetime.datetime.now().replace(microsecond=0).__str__() + '.txt'
+        date = datetime.datetime.now().replace(microsecond=0).__str__()
+        date = date.replace(" ", "_").replace("-", "_").replace(":", "_")
+        self.file_name = 'Log/Bot' + str(self.robot_id) + '_' + date
+        self.file_name = self.file_name.replace(" ", "")
         self.make_headers()
 
         self.encoder_resolution = 1440
@@ -46,6 +63,8 @@ class E160_robot:
         self.control_effort = 0
         self.error = 0
         self.move_forward_error = 0
+
+        self.start = True
 
     def update(self, deltaT):
 
@@ -82,6 +101,11 @@ class E160_robot:
             encoder_measurements = data[-2:]
             range_measurements = data[:-2]
 
+            # prevent encoder jumping
+            if self.start:
+                self.last_encoder_measurements = encoder_measurements
+                self.start = False
+
             # solution is of the form y = c1 + c2/(x^c3), where the coefficients were
             # calculated in MATLAB
             c = [-17.5818421751112, 7402.73728818712, 0.791041234703247]
@@ -117,7 +141,6 @@ class E160_robot:
         delta_s, delta_theta = self.update_odometry(encoder_measurements)
         
         state_est = self.update_state(self.state_est, delta_s, delta_theta)
-        # state_est = E160_state()
 
         return state_est
 
@@ -160,8 +183,16 @@ class E160_robot:
             
             self.control_effort = KPGain *self.move_forward_error + KIGain*sum(self.last_move_forward_measurements)
 
-            R = self.control_effort
-            L = self.control_effort
+            # angle correction
+            KpGain = 15.0
+            KiGain = 6.0
+
+            adjustment = KpGain*self.state_error.theta + KiGain*sum([state.theta for state in self.previous_state_error])
+            adjustment = min(max(adjustment, -10), 10)
+            print('Adjustment: ', adjustment)
+
+            R = self.control_effort + adjustment
+            L = self.control_effort - adjustment
 
         return R, L
 
@@ -202,20 +233,31 @@ class E160_robot:
 
 
     def make_headers(self):
-        f = open(self.file_name, 'a+')
-        f.write('{0} {1:^1} {2:^1} {3:^1} {4:^1} {5:^1} {6:^1} \n'.format('FDist,', 'LDist,', 'RDist,', 'RW,', 'LW,', 'CE,', 'E'))
-        f.close()
 
+        with open(self.file_name, 'a+') as log_file:
+            csv_log = csv.writer(log_file)
+            # with open(self.file_name, 'rb') as logfile:
+            header = ['FDist', 'LDist', 'RDist', \
+                     'XEst', 'YEst', 'ThetaEst', \
+                     'XDes', 'YDes', 'ThetaDes', \
+                     'XError', 'YError', 'ThetaError', \
+                     'SL', 'SR', 'RW', 'LW']
+
+            csv_log.writerow(header)
 
 
     def log_data(self):
-        f = open(self.file_name, 'a+')
 
-        # edit this line to have data logging of the data you care about
-        data = [str(x) + "," for x in [self.front_dist, self.left_dist, self.right_dist, self.manual_control_right_motor, self.manual_control_left_motor, self.control_effort, self.error]]
-
-        f.write(' '.join(data) + '\n')
-        f.close()
+        with open(self.file_name, 'a+') as log_file:
+            csv_log = csv.writer(log_file)
+            # with open(self.file_name, 'rb') as logfile:
+            data = [self.front_dist, self.left_dist, self.right_dist, \
+                    self.state_est.x, self.state_est.y, self.state_est.theta, \
+                    self.state_des.x, self.state_des.y, self.state_des.theta, \
+                    self.state_error.x, self.state_error.y, self.state_error.theta, \
+                    self.sl, self.sr, \
+                    self.manual_control_right_motor, self.manual_control_left_motor]
+            csv_log.writerow(data)
 
 
     def set_manual_control_motors(self, R, L):
@@ -251,6 +293,9 @@ class E160_robot:
         # update last encoder measurement
         self.last_encoder_measurements = encoder_measurements
 
+        self.sl += delta_s_left
+        self.sr += delta_s_right
+
         return delta_s, delta_theta 
     
     
@@ -261,5 +306,14 @@ class E160_robot:
 
         # minus because robot is backwards
         state.set_state(state.x - delta_x, state.y - delta_y, state.theta + delta_theta)
+
+        self.state_error = self.state_des - self.state_est
+
+        # keep track of previous error
+        if len(self.previous_state_error) < self.MAX_PAST_MEASUREMENTS:
+                self.previous_state_error.append(self.state_error)
+        else: 
+            self.previous_state_error.pop(0)
+            self.previous_state_error.append(self.state_error)
 
         return state

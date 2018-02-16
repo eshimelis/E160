@@ -213,9 +213,11 @@ class E160_graphics:
 
         robot_state = self.environment.robots[0].state_est
         des_robot_state = self.environment.robots[0].state_des
+        error_robot_state = self.environment.robots[0].state_error
 
         print("Estimated State: (", robot_state.x, ", ", robot_state.y, ", ", robot_state.theta, ")")
-        print("Desired State: (", robot_state.x, ", ", robot_state.y, ", ", robot_state.theta, ")\n")
+        print("Desired State: (", des_robot_state.x, ", ", des_robot_state.y, ", ", des_robot_state.theta, ")")
+        print("Desired State: (", error_robot_state.x, ", ", error_robot_state.y, ", ", error_robot_state.theta, ")\n")
                 
         # draw particles
 

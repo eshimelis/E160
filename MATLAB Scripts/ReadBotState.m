@@ -1,6 +1,5 @@
 function [ robotState ] = ReadBotState( filename )
-%UNTITLED3 Summary of this function goes here
-%   Detailed explanation goes here
+%ReadBotState Reads robot state and logs output
 
     robotState = readtable(filename);
 
