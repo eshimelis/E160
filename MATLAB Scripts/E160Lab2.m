@@ -5,7 +5,9 @@ addpath(logpath)
 
 % logfilename = 'Bot0_2018_02_16_11_32_02';
 % logfilename = 'Bot0_2018_02_16_11_57_51';
-logfilename = 'Bot0_2018_02_16_12_37_01';
+% logfilename = 'Bot0_2018_02_16_12_37_01'; % backwards one meter
+% logfilename = 'Bot0_2018_02_16_12_36_24'; % forward one meter
+logfilename = '150cmFinal2'
 
 state = ReadBotState([logpath, logfilename]);
 
