@@ -25,7 +25,7 @@ class E160_robot:
         # self.radius = 0.12
         # self.wheel_radius = 0.03
         self.radius = 0.14149/2
-        self.wheel_radius = .06955/2
+        self.wheel_radius = 0.06955/2
 
         self.sl = 0
         self.sr = 0

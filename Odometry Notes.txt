@@ -12,13 +12,14 @@ Test 1
 
 Test 2:
 
+Distance, Yerror, Yerror at start, Xerror at start
 50cm: -0.7cm, (-1cm, 1cm)
-100cm: -0.02cm, (-1cm, 2cm)
-150cm: -0.05cm, (-1cm, 3.5cm)
-200cm:
-250cm:
-300cm:
-350cm:
-400cm:
-450cm: 
-500cm: 
+100cm: -0.2cm, (-1cm, 2cm)
+150cm: -0.5cm, (-1cm, 3.5cm)
+200cm: 0.5cm, (0.45cm, 7.5cm)
+250cm: 0.6cm, (0.5cm, 7.5cm)
+300cm: 1.2cm, (0.4cm, 7cm)
+350cm: 0.6cm, (-0.1cm, 0.67cm) 
+400cm: 0.7cm, (0.8cm, 8.3cm)
+450cm: -0.2cm, (0.1cm, 11cm)
+500cm: 1.1cm, (1.6cm, 16.6cm)
