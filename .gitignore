@@ -1,3 +1,4 @@
 *.pyc
 **/Code/Log
 **/__pycache__
+*.m~

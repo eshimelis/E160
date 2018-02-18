@@ -24,8 +24,8 @@ class E160_robot:
         self.w = 0.1
         # self.radius = 0.12
         # self.wheel_radius = 0.03
-        self.radius = 0.1404/2
-        self.wheel_radius = .0693/2
+        self.radius = 0.14149/2
+        self.wheel_radius = .06955/2
 
         self.sl = 0
         self.sr = 0
@@ -63,6 +63,8 @@ class E160_robot:
         self.control_effort = 0
         self.error = 0
         self.move_forward_error = 0
+
+        self.time_step = 0.1
 
         self.start = True
 
@@ -182,13 +184,15 @@ class E160_robot:
             # integralError = [x[0] - desiredDistance for x in self.last_measurements]
             
             self.control_effort = KPGain *self.move_forward_error + KIGain*sum(self.last_move_forward_measurements)
-
+            self.control_effort = min(max(self.control_effort, -40), 40)
             # angle correction
-            KpGain = 15.0
-            KiGain = 6.0
+            KpGain = 8.0
+            KiGain = 3.0
+            KdGain = 20
 
-            adjustment = KpGain*self.state_error.theta + KiGain*sum([state.theta for state in self.previous_state_error])
-            adjustment = min(max(adjustment, -10), 10)
+            adjustment = KpGain*self.state_error.theta + KiGain*sum([state.theta for state in self.previous_state_error]) - KdGain*(self.state_error.theta - self.previous_state_error[-1].theta)/self.time_step
+            print('Adjustment: ', adjustment)
+            adjustment = min(max(adjustment, -5), 5)
             print('Adjustment: ', adjustment)
 
             R = self.control_effort + adjustment
