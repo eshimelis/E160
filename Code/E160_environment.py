@@ -22,7 +22,7 @@ class E160_environment:
         self.walls.append(E160_wall([0.0, -0.5, 0.0, -1.0],"vertical"))
 
         # create vars for hardware vs simulation
-        self.robot_mode = "HARDWARE MODE"#"SIMULATION MODE"
+        self.robot_mode = "SIMULATION MODE"#"SIMULATION MODE" or "HARDWARE MODE"
         self.control_mode = "MANUAL CONTROL MODE"
 
         # setup xbee communication

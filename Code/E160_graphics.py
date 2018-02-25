@@ -8,7 +8,11 @@ class E160_graphics:
     def __init__(self, environment):
         self.environment = environment
         self.tk = Tk()
-        self.scale = 500
+
+        self.north_west_frame = Frame(self.tk)
+        self.north_west_frame.pack(anchor = W)
+
+        self.scale = 300
         self.canvas = Canvas(self.tk, width=self.environment.width*self.scale, height=self.scale* self.environment.height)
         self.tk.title("E160 - Autonomous Robot Navigation")
         self.canvas.bind("<Button-1>", self.callback)
@@ -52,7 +56,51 @@ class E160_graphics:
         self.tk.bind('<Left>', self.left_arrow_key_input)
         self.tk.bind('<Right>',  self.right_arrow_key_input)
         self.tk.bind('<KeyRelease>', self.key_released)
- 
+        
+        # add range sensor measurements
+        self.range_sensor_var_1 = StringVar()
+        self.range_sensor_var_2 = StringVar()
+        self.range_sensor_var_3 = StringVar()
+        self.range_sensor_label_1 = Label(self.north_west_frame, textvariable = self.range_sensor_var_1).pack()
+        self.range_sensor_label_2 = Label(self.north_west_frame, textvariable = self.range_sensor_var_2).pack()
+        self.range_sensor_label_3 = Label(self.north_west_frame, textvariable = self.range_sensor_var_3).pack()
+
+        # add encoder sensor measurements
+        self.encoder_sensor_var_0 = StringVar()
+        self.encoder_sensor_var_1 = StringVar()
+        
+        self.encoder_sensor_label_0 = Label(self.north_west_frame, textvariable = self.encoder_sensor_var_0).pack()
+        self.encoder_sensor_label_1 = Label(self.north_west_frame, textvariable = self.encoder_sensor_var_1).pack()
+
+        # add range sensor measurements
+        self.x = StringVar()
+        self.y = StringVar()
+        self.theta = StringVar()
+        self.x_label = Label(self.north_west_frame, textvariable = self.x).pack()
+        self.y_label = Label(self.north_west_frame, textvariable = self.y).pack()
+        self.theta_label = Label(self.north_west_frame, textvariable = self.theta).pack()
+       
+        # add text entry for desired X
+        #self.x_des_label = Label(self.north_frame, text="X desired")
+        #self.x_des_label.pack()
+        self.x_des_entry = Entry(self.north_west_frame, justify = RIGHT)
+        self.x_des_entry.insert(10,"0.0")
+        self.x_des_entry.pack()
+        
+        # add text entry for desired Y
+        #self.y_des_label = Label(self.north_west_frame, text="Y desired")
+        #self.y_des_label.pack()
+        self.y_des_entry = Entry(self.north_west_frame, justify = RIGHT)
+        self.y_des_entry.insert(10,"0.0")
+        self.y_des_entry.pack()
+        
+        # add text entry for desired Theta
+        #self.theta_des_label = Label(self.north_west_frame, text="Theta desired")
+        #self.theta_des_label.pack()
+        self.theta_des_entry = Entry(self.north_west_frame, justify = RIGHT)
+        self.theta_des_entry.insert(10,"0.0")
+        self.theta_des_entry.pack()
+
         # draw static environment
         for w in self.environment.walls:
             self.draw_wall(w)
@@ -110,7 +158,7 @@ class E160_graphics:
 
     def track_point(self):
         self.environment.control_mode = "AUTONOMOUS CONTROL MODE"
-
+                
         # update sliders on gui
         self.forward_control.set(0)
         self.rotate_control.set(0)
@@ -118,6 +166,14 @@ class E160_graphics:
         self.last_rotate_control = 0
         self.R = 0
         self.L = 0
+        
+        # draw robots
+        for r in self.environment.robots:
+            x_des = float(self.x_des_entry.get())
+            y_des = float(self.y_des_entry.get())
+            theta_des = float(self.theta_des_entry.get())
+            r.state_des.set_state(x_des,y_des,theta_des)
+            r.point_tracked = False
 
     def stop(self):
         self.environment.control_mode = "MANUAL CONTROL MODE"
@@ -205,8 +261,25 @@ class E160_graphics:
         outputText = "Front: " + str(distance[0]) + "\nLeft: " + str(distance[1]) + "\nRight: " + str(distance[2])
         self.distance_measurements.config(text = outputText)
 
+    def update_labels(self):
+        
+        self.range_sensor_var_1.set("Front Range (m):  " + str(self.environment.robots[0].range_measurements[0]))
+        self.range_sensor_var_2.set("Left Range (m):  " + str(self.environment.robots[0].range_measurements[1]))
+        self.range_sensor_var_3.set("Right Range (m):  " + str(self.environment.robots[0].range_measurements[2]))
+                
+        self.encoder_sensor_var_0.set("Encoder 0 (m):  " + str(self.environment.robots[0].encoder_measurements[0]))
+        self.encoder_sensor_var_1.set("Encoder 1 (m):  " + str(self.environment.robots[0].encoder_measurements[1]))
+
+        self.x.set("X (m):  " + str(self.environment.robots[0].state_est.x))
+        self.y.set("Y (m):  " + str(self.environment.robots[0].state_est.y))
+        self.theta.set("Theta (rad):  " + str(self.environment.robots[0].state_est.theta))
+
     # called at every iteration of main loop
     def update(self):
+
+        # update gui labels
+        self.update_labels()
+
         # draw robots
         for r in self.environment.robots:
             self.draw_robot(r)
@@ -215,9 +288,9 @@ class E160_graphics:
         des_robot_state = self.environment.robots[0].state_des
         error_robot_state = self.environment.robots[0].state_error
 
-        print("Estimated State: (", robot_state.x, ", ", robot_state.y, ", ", robot_state.theta, ")")
-        print("Desired State: (", des_robot_state.x, ", ", des_robot_state.y, ", ", des_robot_state.theta, ")")
-        print("Desired State: (", error_robot_state.x, ", ", error_robot_state.y, ", ", error_robot_state.theta, ")\n")
+        # print("Estimated State: (", robot_state.x, ", ", robot_state.y, ", ", robot_state.theta, ")")
+        # print("Desired State: (", des_robot_state.x, ", ", des_robot_state.y, ", ", des_robot_state.theta, ")")
+        # print("Desired State: (", error_robot_state.x, ", ", error_robot_state.y, ", ", error_robot_state.theta, ")\n")
                 
         # draw particles
 

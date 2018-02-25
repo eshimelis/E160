@@ -1,4 +1,5 @@
 from E160_state import *
+import util
 import math
 import datetime
 import logging
@@ -19,6 +20,9 @@ class E160_robot:
         self.state_error.set_state(0,0,0)
 
         self.previous_state_error = []
+
+        self.R = 0
+        self.L = 0
 
         self.v = 0.05
         self.w = 0.1
@@ -65,8 +69,17 @@ class E160_robot:
         self.move_forward_error = 0
 
         self.time_step = 0.1
-
         self.start = True
+
+        self.last_simulated_encoder_R = 0
+        self.last_simulated_encoder_L = 0
+        
+        self.Kpho = 1.0#1.0
+        self.Kalpha = 2.0#2.0
+        self.Kbeta = -0.5#-0.5
+        self.max_velocity = 0.05
+        self.point_tracked = True
+        self.encoder_per_sec_to_rad_per_sec = 10
 
     def update(self, deltaT):
 
@@ -121,11 +134,11 @@ class E160_robot:
 
             # keep track of measurement
             if len(self.last_measurements) < self.MAX_PAST_MEASUREMENTS:
-            	self.last_measurements.append(range_measurements)
+                self.last_measurements.append(range_measurements)
 
             else: 
-            	self.last_measurements.pop(0)
-            	self.last_measurements.append(range_measurements)
+                self.last_measurements.pop(0)
+                self.last_measurements.append(range_measurements)
 
             # update current measurement to robot state
             self.currentRangeMeasurement = range_measurements
@@ -155,17 +168,19 @@ class E160_robot:
 
         elif self.environment.control_mode == "AUTONOMOUS CONTROL MODE":
 
-            KPGain = 2
-            KIGain = .1
-            desiredDistance = 30
-
-            integralError = [x[0] - desiredDistance for x in self.last_measurements]
+            R, L = self.point_tracker_control()
             
-            self.error = range_measurements[0] - desiredDistance
-            self.control_effort = KPGain * self.error + KIGain*sum(integralError)
+            # KPGain = 2
+            # KIGain = .1
+            # desiredDistance = 30
 
-            R = self.control_effort
-            L = self.control_effort
+            # integralError = [x[0] - desiredDistance for x in self.last_measurements]
+            
+            # self.error = range_measurements[0] - desiredDistance
+            # self.control_effort = KPGain * self.error + KIGain*sum(integralError)
+
+            # R = self.control_effort
+            # L = self.control_effort
 
         elif self.environment.control_mode == "MOVE FORWARD MODE":
             
@@ -199,6 +214,47 @@ class E160_robot:
             L = self.control_effort - adjustment
 
         return R, L
+
+    def point_tracker_control(self):
+        # If the desired point is not tracked yet, then track it
+
+        # calculate state error 
+        self.state_error = self.state_des-self.state_est
+        print('State Error: ', self.state_error.x, ',', self.state_error.y, ',', self.state_error.theta)
+
+        error = self.state_error
+
+        if not self.point_tracked:
+            
+            alpha = -self.state_est.theta + math.atan2(error.y, error.x)
+
+            if -math.pi/2 < alpha and math.pi/2 > alpha:
+                rho = math.sqrt(error.x**2 + error.y**2)
+                alpha = -self.state_est.theta + math.atan2(error.y, error.x)
+                beta = -self.state_est.theta - alpha
+
+                v = self.Kpho*rho
+            else:
+                rho = math.sqrt(error.x**2 + error.y**2)
+                alpha = -self.state_est.theta + math.atan2(-error.y, -error.x)
+                beta = -self.state_est.theta - alpha
+
+                v = -self.Kpho*rho
+
+            w = self.Kalpha*alpha + self.Kbeta*beta
+
+            w2 = ((v/self.radius)-w)/-2
+            w1 = w - w2
+
+            desiredWheelSpeedR = 2*self.radius*w1/self.wheel_radius
+            desiredWheelSpeedL = -2*self.radius*w2/self.wheel_radius
+
+        else:
+            desiredWheelSpeedR = 0
+            desiredWheelSpeedL = 0
+
+        return 10*desiredWheelSpeedR,10*desiredWheelSpeedL
+
 
     def send_control(self, R, L, deltaT):
 

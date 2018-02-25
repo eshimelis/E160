@@ -15,10 +15,10 @@ class E160_state:
         self.theta = theta
 
     def __add__(self, other):
-        return E160_state(self.x + other.x, self.y + other.y, self.theta + other.theta)
+        return E160_state(self.x + other.x, self.y + other.y, util.angle_wrap(self.theta + other.theta))
 
     def __sub__(self, other):
-        return E160_state(self.x - other.x, self.y - other.y, self.theta - other.theta)
+        return E160_state(self.x - other.x, self.y - other.y, util.angle_wrap(self.theta - other.theta))
 
     # deep copy of robot state
     def copy(self):
