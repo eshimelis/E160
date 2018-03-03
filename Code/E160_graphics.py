@@ -12,8 +12,8 @@ class E160_graphics:
         self.north_west_frame = Frame(self.tk)
         self.north_west_frame.pack(anchor = W)
 
-        self.scale = 300
-        self.canvas = Canvas(self.tk, width=self.environment.width*self.scale, height=self.scale* self.environment.height)
+        self.scale = 400
+        self.canvas = Canvas(self.tk, width=self.environment.width*self.scale, height=self.scale*self.environment.height)
         self.tk.title("E160 - Autonomous Robot Navigation")
         self.canvas.bind("<Button-1>", self.callback)
         self.canvas.pack()
@@ -101,6 +101,14 @@ class E160_graphics:
         self.theta_des_entry.insert(10,"0.0")
         self.theta_des_entry.pack()
 
+        # desired and estimated state arrow
+        self.arrow_des = self.canvas.create_line(0, 0, 0, 0, tags=("des_arrow",), arrow="last", fill="orange red", width=6)
+        self.arrow_est = self.canvas.create_line(0, 0, 0, 0, tags=("est_arrow",), arrow="last", fill="steel blue", width=3)
+
+        # self.canvas.bind("<ButtonPress-1>", self.on_button_press)
+        # self.canvas.bind("<B1-Motion>", self.on_move_press)
+        # self.canvas.bind("<ButtonRelease-1>", self.on_button_release)
+
         # draw static environment
         for w in self.environment.walls:
             self.draw_wall(w)
@@ -152,6 +160,27 @@ class E160_graphics:
         robot.image = self.canvas.create_image(robot.state_est.x, robot.state_est.y, image=robot.tkimage)
         robot_points = self.scale_points([robot.state_est.x, robot.state_est.y], self.scale)
         self.canvas.coords(robot.image, *robot_points)
+
+        # des_state = robot.state_des
+        # startx = des_state.x
+        # starty = des_state.y
+        # endx = des_state.x + 0.25*math.cos(des_state.theta)
+        # endy = des_state.y + 0.25*math.sin(des_state.theta)
+        # points = [startx, starty, endx, endy]
+        # [startx, starty, endx, endy] = self.scale_points(points, self.scale)
+
+        self.draw_arrow(robot.state_des, "des_arrow", 0.25)
+        self.draw_arrow(robot.state_est, "est_arrow", 0.25)
+
+    def draw_arrow(self, state, tag, length):
+        startx = state.x
+        starty = state.y
+        endx = state.x + length*math.cos(state.theta)
+        endy = state.y + length*math.sin(state.theta)
+        points = [startx, starty, endx, endy]
+        [startx, starty, endx, endy] = self.scale_points(points, self.scale)
+        self.canvas.coords(tag, startx, starty, endx, endy)
+        self.canvas.tag_raise(tag)
 
     def get_inputs(self):
         pass
@@ -288,6 +317,7 @@ class E160_graphics:
         des_robot_state = self.environment.robots[0].state_des
         error_robot_state = self.environment.robots[0].state_error
 
+
         # print("Estimated State: (", robot_state.x, ", ", robot_state.y, ", ", robot_state.theta, ")")
         # print("Desired State: (", des_robot_state.x, ", ", des_robot_state.y, ", ", des_robot_state.theta, ")")
         # print("Desired State: (", error_robot_state.x, ", ", error_robot_state.y, ", ", error_robot_state.theta, ")\n")
@@ -297,10 +327,14 @@ class E160_graphics:
 
         # draw sensors
 
+        # update desired state arrow
+        # self.update_gui_des(des_robot_state)
 
         # update the graphics
         self.tk.update()
         self.update_sensor_readings([round(self.environment.robots[0].front_dist), self.environment.robots[0].left_dist, self.environment.robots[0].right_dist])
+
+        
 
         # check for gui buttons
         self.get_inputs()
