@@ -19,7 +19,7 @@ class E160_state:
         return E160_state(self.x + other.x, self.y + other.y, util.angle_wrap(self.theta + other.theta))
 
     def __sub__(self, other):
-        return E160_state(self.x - other.x, self.y - other.y, util.angle_wrap(self.theta - util.angle_wrap(other.theta)))
+        return E160_state(self.x - other.x, self.y - other.y, util.angle_wrap(self.theta - other.theta))
 
     def xydist(self, other):
         return math.sqrt((self.x-other.x)**2 + (self.y-other.y)**2)
