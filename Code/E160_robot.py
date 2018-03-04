@@ -73,22 +73,39 @@ class E160_robot:
 
         self.last_simulated_encoder_R = 0
         self.last_simulated_encoder_L = 0
-        
+            
+        self.min_ptrack_dist_error = 0.01   # meters
+        self.min_ptrack_ang_error = 0.05    # radians
+
         #simulation gains
-        # self.Kpho = 1.5#1.0
-        # self.Kalpha = 2.8#2.0
-        # self.Kbeta = -1.9#-0.5
+        self.Kpho = 1.2#1.0
+        self.Kalpha = 3.0#2.0
+        self.Kbeta = -1.3#-0.5
 
         # hardware gains
-        self.Kpho = 1.0#1.0
-        self.Kalpha = 2.8#2.0
-        self.Kbeta = -2.5#-0.5
+        # self.Kpho = 1.0#1.0
+        # self.Kalpha = 2.8#2.0
+        # self.Kbeta = -2.5#-0.5
         
-        self.max_velocity = 0.1
+        self.max_velocity = 0.05
         self.max_ang_velocity = 0.8
-        # self.max_velocity = 0.2
         self.point_tracked = True
         self.encoder_per_sec_to_rad_per_sec = 10
+
+        self.path_counter = 0
+        self.path = [E160_state(0, 0, 1.57), E160_state(0, 0, 0),
+                     E160_state(0, 0, -2), E160_state(0, 0, 2),
+                     E160_state(0, 0, 3.14), E160_state(0, 0, 0),
+
+                     E160_state(0.5, 0, 1.57), E160_state(0.5, 0.5, 3.14),
+                     E160_state(0, 0.5, 3.14+1.57), E160_state(0, 0, 0),
+
+                     E160_state(0.25, 0.25, 1.57), E160_state(0, 0, 0),
+                     E160_state(0.25, 0, 1.57), E160_state(0, 0, 0), 
+                     E160_state(0, 0.25, 0), E160_state(0, 0, 0), 
+                     E160_state(0, 0.25, -1.57), E160_state(0, 0, 0),
+                     E160_state(-0.25, 0, 3.14), E160_state(0, 0, 0),
+                     E160_state(0.25, 0, 3.14), E160_state(0, 0, 0)]
 
     def update(self, deltaT):
 
@@ -178,11 +195,6 @@ class E160_robot:
         elif self.environment.control_mode == "AUTONOMOUS CONTROL MODE":
 
             R, L = self.point_tracker_control()
-
-            # print(R)
-            # print (L)
-            # R = min(max(R, -40), 40)
-            # L = min(max(L, -40), 40)
             # KPGain = 2
             # KIGain = .1
             # desiredDistance = 30
@@ -234,95 +246,51 @@ class E160_robot:
         self.state_error = self.state_des-self.state_est
         error = self.state_error
 
-        # if error.x == 0 or error.y == 0:
-        #     error.x += 0.00001
-        #     error.y += 0.001
-
-        print('Estimated State: ', self.state_est.x, ',', self.state_est.y, ',', self.state_est.theta)
-        print('Desired State: ', self.state_des.x, ',', self.state_des.y, ',', self.state_des.theta)
-        print('State Error: ', error.x, ',', error.y, ',', error.theta)
-
         # stop point tracking if close enough
-        if (self.state_est.xydist(self.state_des) < 0.05 and abs(error.theta) < 0.05): self.point_tracked = True
-        else: self.point_tracked = False
+        if (self.state_est.xydist(self.state_des) < self.min_ptrack_dist_error and abs(error.theta) < self.min_ptrack_ang_error): 
+            self.point_tracked = True
+        else: 
+            self.point_tracked = False
+
 
         if not self.point_tracked:
             
             alpha = util.ang_diff(math.atan2(error.y, error.x), self.state_est.theta)
-            print("Pre-loop Alpha: ", alpha)
             
+            # forwards
             if alpha <= math.pi/2 and alpha >= -math.pi/2:
-                print("Normal")
-
-                if ((abs(error.y) + abs(error.x))< 0.07):
-                    print("using simple alpha")
-                    # alpha = util.angle_wrap(-self.state_est.theta)
-                    alpha = 0
-                    # alpha = util.ang_diff(math.atan2(error.y, error.x), self.state_est.theta)
+                if (math.sqrt(error.x**2 + error.y**2) < self.min_ptrack_dist_error):
                     rho = 0
-                    # beta = util.ang_diff(-self.state_est.theta, -self.state_des.theta)
-
-                    # if (abs(error.theta) > math.pi/2):
-                    #     beta = 7
-                    # else:
-                    #     beta = util.ang_sum(-self.state_est.theta, self.state_des.theta)
-
+                    alpha = 0                    
                     beta = -error.theta
-                    # beta = util.ang_diff(util.ang_diff(-self.state_est.theta, alpha), -self.state_des.theta)
                 else:
                     rho = math.sqrt(error.x**2 + error.y**2)
                     alpha = util.ang_diff(math.atan2(error.y, error.x), self.state_est.theta)
                     beta = util.ang_diff(util.ang_diff(-self.state_est.theta, alpha), -self.state_des.theta)
-
-                # v = max(min(self.Kpho*rho, self.max_velocity), -self.max_velocity)
                 v = self.Kpho*rho
 
+            # backwards
             else:
-                print("Backwards")
-                rho = math.sqrt(error.x**2 + error.y**2)
-                if ((abs(error.y) + abs(error.x))< 0.07):
-                    print("using simple alpha")
-                    # alpha = util.angle_wrap(-self.state_est.theta)
-                    alpha = 0
-                    # alpha = util.ang_diff(math.atan2(-error.y, -error.x), self.state_est.theta)
+                if (math.sqrt(error.x**2 + error.y**2) < self.min_ptrack_dist_error):
                     rho = 0
-                    # beta = util.ang_diff(-self.state_est.theta, self.state_des.theta)
-                    # if (abs(error.theta) > math.pi/2):
-                    #     beta = 7
-                    # else:
-                    #     beta = util.ang_sum(self.state_est.theta, -self.state_des.theta)
+                    alpha = 0
                     beta = -error.theta
-                    # beta = util.ang_diff(util.ang_diff(-self.state_est.theta, alpha), -self.state_des.theta)
                 else:
                     rho = math.sqrt(error.x**2 + error.y**2)
                     alpha = util.ang_diff(math.atan2(-error.y, -error.x), self.state_est.theta)
                     beta = util.ang_diff(util.ang_diff(-self.state_est.theta, alpha), -self.state_des.theta)
-
-                # v = max(min(-self.Kpho*rho, self.max_velocity), -self.max_velocity)
                 v = -self.Kpho*rho
 
-            # print(self.Kalpha*alpha)
-            # print(self.Kbeta*beta)
-            # print()
 
             w = self.Kalpha*alpha + self.Kbeta*beta
             
+            # limit maximum linear and angular velocity
             w = max(min(w, self.max_ang_velocity), -self.max_ang_velocity)
             v = max(min(v, self.max_velocity), -self.max_velocity)
             
+            # computer wheel angular velocities
             w2 = ((v/self.radius)-w)/-2
             w1 = w - w2
-
-            print()
-            print("Tracking? ", not(self.point_tracked))
-            print("Velocity: ", v)
-            print("Alpha Gain: ", self.Kalpha*alpha)
-            print("Beta Gain: ", self.Kbeta*beta)
-            print("Rho: ", rho)
-            print("Omega: ", w)
-            print("Omega1: ", w1)
-            print("Omega2: ", w2)
-            print()
 
             desiredWheelSpeedR = 2*self.radius*w1/self.wheel_radius * self.encoder_per_sec_to_rad_per_sec
             desiredWheelSpeedL = -2*self.radius*w2/self.wheel_radius * self.encoder_per_sec_to_rad_per_sec

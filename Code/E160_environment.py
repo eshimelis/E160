@@ -10,7 +10,7 @@ class E160_environment:
 
 
     def __init__(self):
-        self.width = 2.0
+        self.width = 4.0
         self.height = 2.0
 
         # set up walls, putting top left point first
