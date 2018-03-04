@@ -1,4 +1,5 @@
 import math
+import E160_state
 from tkinter import *
 from E160_robot import *
 from PIL import Image, ImageTk
@@ -34,21 +35,23 @@ class E160_graphics:
         # add track point button
         self.track_point_button = Button(self.tk, text="Track Point", anchor="s", wraplength=100, command=self.track_point).pack()
 
+        # add track point button
+        self.track_waypoint_button = Button(self.tk, text="Track Waypoints", anchor="s", wraplength=100, command=self.track_waypoint).pack()
+
         # add stop button
-        self.track_point_button = Button(self.tk, text="Stop", anchor="s", wraplength=100, command=self.stop).pack()
+        self.stop_point_button = Button(self.tk, text="Stop", anchor="s", wraplength=100, command=self.stop).pack()
 
         # add quit button
-        self.track_point_button = Button(self.tk, text="Quit", anchor="s", wraplength=100, command=self.quit).pack()
+        self.quit_point_button = Button(self.tk, text="Quit", anchor="s", wraplength=100, command=self.quit).pack()
 
-        # add quit button
-        self.move_button = Button(self.tk, text="Move Forward", anchor="s", wraplength=100, command=self.move_forward).pack()
-        self.move_distance = Entry(self.tk)
-        self.move_distance.pack()
-        self.goal_distance = 0
+        # add reset button
+        self.reset_point_button = Button(self.tk, text="Reset", anchor="s", wraplength=100, command=self.reset).pack()
 
-        # add distance sensor measurements
-        self.distance_measurements = Label(self.tk, text="Test")
-        self.distance_measurements.pack()
+        # add move buttons
+        # self.move_button = Button(self.tk, text="Move Forward", anchor="s", wraplength=100, command=self.move_forward).pack()
+        # self.move_distance = Entry(self.tk)
+        # self.move_distance.pack()
+        # self.goal_distance = 0
 
         # arrow input
         self.tk.bind('<Up>', self.up_arrow_key_input)
@@ -204,6 +207,24 @@ class E160_graphics:
             r.state_des.set_state(x_des,y_des,theta_des)
             r.point_tracked = False
 
+    def track_waypoint(self):
+        self.environment.control_mode = "AUTONOMOUS CONTROL MODE"
+                
+        # update sliders on gui
+        self.forward_control.set(0)
+        self.rotate_control.set(0)
+        self.last_forward_control = 0
+        self.last_rotate_control = 0
+        self.R = 0
+        self.L = 0
+        
+        # draw robots
+        for r in self.environment.robots:
+            if r.path_counter <= len(r.path):
+                des_state = r.path[r.path_counter]
+                r.state_des.set_state(des_state.x, des_state.y, des_state.theta)
+                r.path_counter += 1
+
     def stop(self):
         self.environment.control_mode = "MANUAL CONTROL MODE"
 
@@ -220,6 +241,11 @@ class E160_graphics:
         self.forward_control.set(0)
         self.rotate_control.set(0)
         self.gui_stopped = True
+
+    def reset(self):
+        self.environment.control_mode = "AUTONOMOUS CONTROL MODE"
+        self.environment.robots[0].state_des.set_state(0, 0, 0)
+        self.environment.robots[0].point_tracked = False
 
     def move_forward(self):
         self.environment.control_mode = "MOVE FORWARD MODE"
@@ -313,9 +339,9 @@ class E160_graphics:
         for r in self.environment.robots:
             self.draw_robot(r)
 
-        robot_state = self.environment.robots[0].state_est
-        des_robot_state = self.environment.robots[0].state_des
-        error_robot_state = self.environment.robots[0].state_error
+        # robot_state = self.environment.robots[0].state_est
+        # des_robot_state = self.environment.robots[0].state_des
+        # error_robot_state = self.environment.robots[0].state_error
 
 
         # print("Estimated State: (", robot_state.x, ", ", robot_state.y, ", ", robot_state.theta, ")")
@@ -332,9 +358,6 @@ class E160_graphics:
 
         # update the graphics
         self.tk.update()
-        self.update_sensor_readings([round(self.environment.robots[0].front_dist), self.environment.robots[0].left_dist, self.environment.robots[0].right_dist])
-
-        
 
         # check for gui buttons
         self.get_inputs()
