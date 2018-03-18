@@ -2,3 +2,4 @@
 **/Code/Log
 **/__pycache__
 *.m~
+.DS_Store

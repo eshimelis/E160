@@ -112,6 +112,12 @@ class E160_graphics:
         # self.canvas.bind("<B1-Motion>", self.on_move_press)
         # self.canvas.bind("<ButtonRelease-1>", self.on_button_release)
 
+        # initilize particle representation
+        self.particles_dot = [self.canvas.create_oval(0,0,0,0, fill ='black') for x in range(self.environment.robots[0].PF.numParticles)]
+
+        # initilize particle representation
+        self.particles_vec = [self.canvas.create_line(0, 0, 0, 0, arrow="last", fill="medium sea green", width=1) for x in range(self.environment.robots[0].PF.numParticles)]
+
         # draw static environment
         for w in self.environment.walls:
             self.draw_wall(w)
@@ -157,25 +163,31 @@ class E160_graphics:
         robot.robot_gif = Image.open("E160_robot_image.gif").convert('RGBA')
 
     def draw_robot(self, robot):
-
+        
         # gif update
-        robot.tkimage = ImageTk.PhotoImage(robot.robot_gif.rotate(180/3.14*robot.state_est.theta))
-        robot.image = self.canvas.create_image(robot.state_est.x, robot.state_est.y, image=robot.tkimage)
-        robot_points = self.scale_points([robot.state_est.x, robot.state_est.y], self.scale)
+        robot.tkimage = ImageTk.PhotoImage(robot.robot_gif.rotate(180/3.14*robot.state_draw.theta))
+        robot.image = self.canvas.create_image(robot.state_draw.x, robot.state_draw.y, image=robot.tkimage)
+        robot_points = self.scale_points([robot.state_draw.x, robot.state_draw.y], self.scale)
         self.canvas.coords(robot.image, *robot_points)
 
-        # des_state = robot.state_des
-        # startx = des_state.x
-        # starty = des_state.y
-        # endx = des_state.x + 0.25*math.cos(des_state.theta)
-        # endy = des_state.y + 0.25*math.sin(des_state.theta)
-        # points = [startx, starty, endx, endy]
-        # [startx, starty, endx, endy] = self.scale_points(points, self.scale)
+        # add estimated and desired position arrows
+        self.update_arrow(robot.state_des, "des_arrow", 0.25)
+        self.update_arrow(robot.state_draw, "est_arrow", 0.25)
 
-        self.draw_arrow(robot.state_des, "des_arrow", 0.25)
-        self.draw_arrow(robot.state_est, "est_arrow", 0.25)
 
-    def draw_arrow(self, state, tag, length):
+    def draw_particles(self, robot):
+        
+        for i in range(robot.PF.numParticles):
+            self.canvas.delete(self.particles_vec[i])
+            self.particles_vec[i] = self.draw_arrow(robot.PF.particles[i], 0.1)
+        for i in range(robot.PF.numParticles):
+            pf_point = [robot.PF.particles[i].x, robot.PF.particles[i].y]
+            point = self.scale_points(pf_point, self.scale)
+            self.canvas.delete(self.particles_dot[i]) 
+            self.particles_dot[i] = self.canvas.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill =  'red')
+
+
+    def update_arrow(self, state, tag, length):
         startx = state.x
         starty = state.y
         endx = state.x + length*math.cos(state.theta)
@@ -184,6 +196,15 @@ class E160_graphics:
         [startx, starty, endx, endy] = self.scale_points(points, self.scale)
         self.canvas.coords(tag, startx, starty, endx, endy)
         self.canvas.tag_raise(tag)
+
+    def draw_arrow(self, state, length):
+        startx = state.x
+        starty = state.y
+        endx = state.x + length*math.cos(state.theta)
+        endy = state.y + length*math.sin(state.theta)
+        points = [startx, starty, endx, endy]
+        [startx, starty, endx, endy] = self.scale_points(points, self.scale)
+        return self.canvas.create_line(startx, starty, endx, endy, arrow="last", fill="tan1", width=1)
 
     def get_inputs(self):
         pass
@@ -338,18 +359,9 @@ class E160_graphics:
         # draw robots
         for r in self.environment.robots:
             self.draw_robot(r)
-
-        # robot_state = self.environment.robots[0].state_est
-        # des_robot_state = self.environment.robots[0].state_des
-        # error_robot_state = self.environment.robots[0].state_error
-
-
-        # print("Estimated State: (", robot_state.x, ", ", robot_state.y, ", ", robot_state.theta, ")")
-        # print("Desired State: (", des_robot_state.x, ", ", des_robot_state.y, ", ", des_robot_state.theta, ")")
-        # print("Desired State: (", error_robot_state.x, ", ", error_robot_state.y, ", ", error_robot_state.theta, ")\n")
                 
         # draw particles
-
+        self.draw_particles(self.environment.robots[0])
 
         # draw sensors
 
