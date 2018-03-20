@@ -204,7 +204,7 @@ class E160_graphics:
         endy = state.y + length*math.sin(state.theta)
         points = [startx, starty, endx, endy]
         [startx, starty, endx, endy] = self.scale_points(points, self.scale)
-        return self.canvas.create_line(startx, starty, endx, endy, arrow="last", fill="tan1", width=1)
+        return self.canvas.create_line(startx, starty, endx, endy, arrow="last", fill="dark olive green", width=1)
 
     def get_inputs(self):
         pass
