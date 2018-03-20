@@ -12,7 +12,7 @@ class E160_PF:
     def __init__(self, environment, robotWidth, wheel_radius, encoder_resolution):
         self.particles = []
         self.environment = environment
-        self.numParticles = 40
+        self.numParticles = 300
         
         # maybe should just pass in a robot class?
         self.robotWidth = robotWidth

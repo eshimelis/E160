@@ -90,9 +90,9 @@ class E160_robot:
         self.min_ptrack_ang_error = 0.05    # radians
 
         #simulation gains
-        self.Kpho = 1.2#1.0
+        self.Kpho = 1.4#1.0
         self.Kalpha = 3.0#2.0
-        self.Kbeta = -1.4#-0.5
+        self.Kbeta = -1.2#-0.5
 
         # hardware gains
         # self.Kpho = 1.0#1.0
@@ -114,7 +114,7 @@ class E160_robot:
                      E160_state(0, 0.25, -1.57), E160_state(0, 0, 0),
                      E160_state(-0.25, 0, 3.14), E160_state(0, 0, 0),
                      E160_state(0.25, 0, 3.14), E160_state(0, 0, 0)]
-                     
+
         # self.path = [E160_state(0, 0, 1.57), E160_state(0, 0, 0),
         #              E160_state(0, 0, -2), E160_state(0, 0, 2),
         #              E160_state(0, 0, 3.14), E160_state(0, 0, 0),
@@ -330,7 +330,10 @@ class E160_robot:
             desiredWheelSpeedR = 2*self.radius*w1/self.wheel_radius * self.encoder_per_sec_to_rad_per_sec
             desiredWheelSpeedL = -2*self.radius*w2/self.wheel_radius * self.encoder_per_sec_to_rad_per_sec
 
-        else:
+        else:            
+            self.point_tracked = False
+            self.state_des = self.path[self.path_counter]
+            self.path_counter = (self.path_counter+1)%len(self.path)
             desiredWheelSpeedR = 0
             desiredWheelSpeedL = 0
 
