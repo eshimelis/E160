@@ -12,7 +12,7 @@ class E160_PF:
     def __init__(self, environment, robotWidth, wheel_radius, encoder_resolution):
         self.particles = []
         self.environment = environment
-        self.numParticles = 300
+        self.numParticles = 200
         
         # maybe should just pass in a robot class?
         self.robotWidth = robotWidth
@@ -96,7 +96,6 @@ class E160_PF:
                 sensor_readings([float, float, float]): sensor readings from range fingers
             Return:
                 None'''
-    
         
         for i in range(self.numParticles):
             self.Propagate(delta_s, delta_theta, i)
@@ -147,6 +146,7 @@ class E160_PF:
         # end student code here
         return newWeight
 
+
     def Resample(self):
         '''Resample the particles systematically
             Args:
@@ -159,8 +159,6 @@ class E160_PF:
         
         # end student code here
         
-
-
 
     def GetEstimatedPos(self):
         ''' Calculate the mean of the particles and return it 
@@ -186,13 +184,14 @@ class E160_PF:
                 sensorT: orientation of the sensor on the robot
             Return:
                 distance to the closest wall' (float)'''
-        # add student code here 
         
+        minDist = float('inf')
         
-        
-        # end student code here
-        
-        return 0
+        for wall in walls:
+            wallDist = self.FindWallDistance(particle, wall.wall_points, sensorT)
+            if wallDist != None:
+                minDist = min(minDist, wallDist)
+        return minDist
     
 
     def FindWallDistance(self, particle, wall, sensorT):
@@ -204,12 +203,30 @@ class E160_PF:
             Return:
                 distance to the closest wall (float)'''
         
-        point1 = Point(wall[0], wall[1])
-        point2 = Point(wall[2], wall[3])
-                
-        return 0
+        point1 = util.Vec2(wall[0], wall[1])
+        point2 = util.Vec2(wall[2], wall[3])
+        point2 = point2 - point1 # direction vector from point 1
 
-    
+        bot = util.Vec2(particle.x, particle.y) # bot vector
+        heading = util.Vec2(math.cos(particle.theta), math.sin(particle.theta)) # heading vector
+
+        # intersection exists if
+        # bot + v*heading = point1 + u*point2Dir
+
+        # check if lines are parallel
+        if heading.cross(point2) == 0:
+            return None
+        else:
+            v = (point1 - bot).cross(point2) / heading.cross(point2)    # bot vector scaling factor
+            u = (bot - point1).cross(heading) / point2.cross(heading)   # wall vector scaling factor
+
+            # check if intersection exists
+            # v > 0 - Robot facing wall
+            # 0 < u < 1 - Intersection in wall
+            if v < 0 or u < 0 or u > 1:
+                return None
+            else:
+                return heading.scale(v).norm()
 
     def angleDiff(self, ang):
         ''' Wrap angles between -pi and pi'''

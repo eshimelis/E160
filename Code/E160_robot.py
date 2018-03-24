@@ -135,6 +135,8 @@ class E160_robot:
 
         self.PF = E160_PF(environment, self.width, self.wheel_radius, self.encoder_resolution)
 
+        self.WallPoint = util.Vec2(0, 0)
+
     def update(self, deltaT):
 
         # get sensor measurements
@@ -150,6 +152,10 @@ class E160_robot:
         # localize with particle filter
         self.state_est = self.PF.LocalizeEstWithParticleFilter(self.state_odo, delta_s, delta_theta, self.range_measurements)
 
+        # for debugging
+        self.WallPoint = self.PF.FindWallDistance(self.state_odo, [-0.5, 0.5, -0.5, -0.5], 0)
+        print(self.WallPoint)
+        # print(self.WallPoint)
         # to output the true location for display purposes only. 
         self.state_draw = self.state_odo
 
