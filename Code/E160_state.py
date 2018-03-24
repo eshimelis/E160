@@ -24,6 +24,8 @@ class E160_state:
     def xydist(self, other):
         return math.sqrt((self.x-other.x)**2 + (self.y-other.y)**2)
 
+    def __repr__(self):
+        return "[" + str(self.x) + ", " + str(self.y) + ", " + str(self.theta) + "]"
     # deep copy of robot state
     def copy(self):
         return E160_state(self.x, self.y, self.theta)

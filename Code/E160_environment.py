@@ -15,11 +15,12 @@ class E160_environment:
 
         # set up walls, putting top left point first
         self.walls = []
-        self.walls.append(E160_wall([-0.5, 0.5, -0.5, -0.5],"vertical"))
-        self.walls.append(E160_wall([0.5, 0.5, 0.5, -0.5],"vertical"))
-        self.walls.append(E160_wall([-0.5, 0.5, 0.5, 0.5],"horizontal"))
+        self.walls.append(E160_wall([-1, 0, 0, 0],"horizontal"))
+        self.walls.append(E160_wall([-1, 0.5, 0, 0.5],"horizontal"))
+        self.walls.append(E160_wall([-1, -0.5, 0.75, -0.5],"horizontal"))
+        # self.walls.append(E160_wall([-0.75, 0.75, 0.75, 0.75],"horizontal"))
         # self.walls.append(E160_wall([0.5, -0.5, 1.0, -0.5],"horizontal"))
-        # self.walls.append(E160_wall([0.0, -0.5, 0.0, -1.0],"vertical"))
+        self.walls.append(E160_wall([0.75, -0.5, 0.75, 1],"vertical"))
 
         # create vars for hardware vs simulation
         self.robot_mode = "SIMULATION MODE"#"SIMULATION MODE" or "HARDWARE MODE"

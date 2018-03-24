@@ -28,7 +28,7 @@ class E160_robot:
         self.state_draw.set_state(0,0,0)
 
         self.state_odo = E160_state()
-        self.state_odo.set_state(0,0,0) # real position for simulation
+        self.state_odo.set_state(-0.75,-0.25,0) # real position for simulation
 
         self.previous_state_error = []
 
@@ -105,15 +105,21 @@ class E160_robot:
         self.encoder_per_sec_to_rad_per_sec = 10
 
         self.path_counter = 0
-        self.path = [E160_state(0.5, 0, 1.57), E160_state(0.5, 0.5, 3.14),
-                     E160_state(0, 0.5, 3.14+1.57), E160_state(0, 0, 0),
+        self.path = [E160_state(0.25, -0.25, 0), E160_state(0.25, -0.25, math.pi/2),
+                    E160_state(0.25, 0.25, math.pi/2), E160_state(0.25, 0.25, math.pi),
+                    E160_state(-0.75, 0.25, math.pi), E160_state(-0.75, 0.25, 0),
+                    E160_state(0.25, 0.25, 0), E160_state(0.25, 0.25, math.pi/2), 
+                    E160_state(0.25, -0.25, math.pi/2), E160_state(0.25, -0.25, 0),
+                    E160_state(-0.75, -0.25, 0)]
+        # self.path = [E160_state(0.5, 0, 1.57), E160_state(0.5, 0.5, 3.14),
+        #              E160_state(0, 0.5, 3.14+1.57), E160_state(0, 0, 0),
 
-                     E160_state(0.25, 0.25, 1.57), E160_state(0, 0, 0),
-                     E160_state(0.25, 0, 1.57), E160_state(0, 0, 0), 
-                     E160_state(0, 0.25, 0), E160_state(0, 0, 0), 
-                     E160_state(0, 0.25, -1.57), E160_state(0, 0, 0),
-                     E160_state(-0.25, 0, 3.14), E160_state(0, 0, 0),
-                     E160_state(0.25, 0, 3.14), E160_state(0, 0, 0)]
+        #              E160_state(0.25, 0.25, 1.57), E160_state(0, 0, 0),
+        #              E160_state(0.25, 0, 1.57), E160_state(0, 0, 0), 
+        #              E160_state(0, 0.25, 0), E160_state(0, 0, 0), 
+        #              E160_state(0, 0.25, -1.57), E160_state(0, 0, 0),
+        #              E160_state(-0.25, 0, 3.14), E160_state(0, 0, 0),
+        #              E160_state(0.25, 0, 3.14), E160_state(0, 0, 0)]
 
         # self.path = [E160_state(0, 0, 1.57), E160_state(0, 0, 0),
         #              E160_state(0, 0, -2), E160_state(0, 0, 2),
@@ -151,11 +157,14 @@ class E160_robot:
 
         # localize with particle filter
         self.state_est = self.PF.LocalizeEstWithParticleFilter(self.state_odo, delta_s, delta_theta, self.range_measurements)
-
+        
+        # testing
+        # self.state_est = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
+        
         # for debugging
-        self.WallPoint = self.PF.FindWallDistance(self.state_odo, [-0.5, 0.5, -0.5, -0.5], 0)
-        print(self.WallPoint)
+        # self.WallPoint = self.PF.FindWallDistance(self.state_odo, [0.5, 0.5, 0.5, -0.5], 0)
         # print(self.WallPoint)
+        
         # to output the true location for display purposes only. 
         self.state_draw = self.state_odo
 
