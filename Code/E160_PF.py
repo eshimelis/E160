@@ -19,20 +19,23 @@ class E160_PF:
         self.radius = robotWidth/2
         self.wheel_radius = wheel_radius
         self.encoder_resolution = encoder_resolution
-        self.FAR_READING = 1000
+        self.FAR_READING = 10
         
         # PF parameters
-        self.IR_sigma = 0.2 # Range finder s.d
+        self.IR_sigma = 0.1 # Range finder s.d
         # self.odom_xy_sigma = 1.25   # odometry delta_s s.d
         # self.odom_heading_sigma = 0.75  # odometry heading s.d
-        self.odom_xy_sigma = 0.0005  # odometry standard deviation, meters
-        self.odom_heading_sigma = 0.01  # odometry heading s.d
-        # self.odom_xy_sigma = 0.05  # odometry standard deviation, meters
-        # self.odom_heading_sigma = 0.75# odometry heading s.d
+        self.odom_xy_sigma = 0.05  # odometry standard deviation, meters
+        self.odom_heading_sigma = 0.03  # odometry heading s.d
+        # self.odom_xy_sigma = 0.3  # odometry standard deviation, meters
+        # self.odom_heading_sigma = 0.3 # odometry heading s.d
+
+        self.delta_rl_sigma = 0.05
+
         self.particle_weight_sum = 0
 
         # define the sensor orientations
-        self.sensor_orientation = [-math.pi/2, 0, math.pi/2] # orientations of the sensors on robot
+        self.sensor_orientation = [0, math.pi/2, -math.pi/2] # orientations of the sensors on robot
         self.walls = self.environment.walls
 
         # initialize the current state
@@ -55,17 +58,16 @@ class E160_PF:
                 None'''
         self.particles = []
         for i in range(0, self.numParticles):
-            #self.SetRandomStartPos(i)
-            self.SetKnownStartPos(i)
+            self.SetRandomStartPos(i)
+            # startPos = E160_state(0, 0, 0)
+            # self.SetKnownStartPos(i, startPos)
 
             
     def SetRandomStartPos(self, i):
-        # add student code here 
-        
-        
-        
-        # end student code here
-        pass
+        xPos = random.uniform(self.map_minX, self.map_maxX)
+        yPos = random.uniform(self.map_minY, self.map_maxY)
+        theta = random.uniform(-math.pi, math.pi)
+        self.particles.append(self.Particle(xPos,yPos,theta,1))
 
     def SetKnownStartPos(self, i):
         self.particles.append(self.Particle(0,0,0,1))
@@ -78,15 +80,28 @@ class E160_PF:
             Return:
                 None'''
         
-        # add student code here 
-        
-        
-        
-        # end student code here
-        
-        self.Propagate()
+        # for i in range(self.numParticles):
 
-        return self.GetEstimatedPos()
+        #     delta_s = 0
+        #     delta_theta = 0
+
+        #     encoder_delta_left = encoder_measurements[0] - self.last_encoder_measurements[0]
+        #     encoder_delta_right = encoder_measurements[1] - self.last_encoder_measurements[1]
+
+        #     delta_s_left = float(encoder_delta_left)*(math.pi*self.wheel_radius*2)/self.encoder_resolution
+        #     delta_s_right = float(encoder_delta_right)*(math.pi*self.wheel_radius*2)/self.encoder_resolution
+
+        #     # delta_s_left += np.random.normal(0, self.delta_rl_sigma)
+        #     # delta_s_right += np.random.normal(0, self.delta_rl_sigma)
+
+        #     delta_s = (delta_s_left + delta_s_right)/2
+        #     delta_theta = (delta_s_left - delta_s_right)/(2*self.radius)
+
+        #     self.Propagate(delta_s, delta_theta, i)
+        #     self.particles[i].set_weight(self.CalculateWeight(sensor_readings, self.environment.walls, self.particles[i]))
+
+        # self.Resample()
+        # return self.GetEstimatedPos()
 
     def LocalizeEstWithParticleFilter(self, state_odo, delta_s, delta_theta, sensor_readings):
         ''' Localize the robot with particle filters. Call everything
@@ -96,10 +111,12 @@ class E160_PF:
                 sensor_readings([float, float, float]): sensor readings from range fingers
             Return:
                 None'''
-        
         for i in range(self.numParticles):
+            # propogate and weight each particle based on sensor reading
             self.Propagate(delta_s, delta_theta, i)
+            self.particles[i].set_weight(self.CalculateWeight(sensor_readings, self.environment.walls, self.particles[i]))
 
+        self.Resample()
         return self.GetEstimatedPos()
 
     def Propagate(self, delta_s, delta_theta, i):
@@ -110,12 +127,12 @@ class E160_PF:
             return:
                 nothing'''
         # add student code here 
-        
-        # simulate odometry error only if moving
-        if abs(delta_s) > 0 or abs(delta_theta) > 0:
-            delta_s += np.random.normal(0, self.odom_xy_sigma)
-            delta_theta += np.random.normal(0, self.odom_heading_sigma)
 
+        
+        # if abs(delta_s) > 0 or abs(delta_theta) > 0:
+        delta_s += np.random.normal(0, self.odom_xy_sigma)
+        delta_theta += np.random.normal(0, self.odom_heading_sigma)
+            
         state = self.particles[i]
 
         delta_x = delta_s * math.cos(state.theta + delta_theta/2)
@@ -138,12 +155,19 @@ class E160_PF:
             return:
                 new weight of the particle (float) '''
 
-        newWeight = 0
-        # add student code here 
-        
-        
-        
-        # end student code here
+        newWeight = 1
+        # for reading in sensor_readings:
+        #         
+        # convert measurement to standard normal
+        for wall in walls:
+
+            for i in range(len(self.sensor_orientation)):
+                expDist = min(self.FindMinWallDistance(particle, walls, self.sensor_orientation[i]), self.FAR_READING)
+                actDist = min(sensor_readings[i], self.FAR_READING)
+
+                normalizedMeasurement = (expDist - actDist)/self.IR_sigma
+                newWeight *= norm.pdf(normalizedMeasurement)
+        # print(newWeight)
         return newWeight
 
 
@@ -153,12 +177,25 @@ class E160_PF:
                 None
             Return:
                 None'''
-        # add student code here 
         
+        self.particle_weight_sum = 0
+        for i in range(self.numParticles):
+            self.particle_weight_sum += self.particles[i].weight
         
-        
-        # end student code here
-        
+        newParticles = []
+
+        for i in range(self.numParticles):
+            r = random.uniform(0, self.particle_weight_sum)
+            j = 0
+            wsum = self.particles[j].weight
+            while(wsum < r):
+                j += 1
+                wsum += self.particles[j].weight
+
+            particle = self.particles[j]
+            newParticles.append(self.Particle(particle.x, particle.y, particle.theta, 1))
+
+        self.particles = newParticles
 
     def GetEstimatedPos(self):
         ''' Calculate the mean of the particles and return it 
@@ -166,12 +203,18 @@ class E160_PF:
                 None
             Return:
                 None'''
-        # add student code here 
         
-        
-        
-        # end student code here
-        
+        xSum = 0
+        ySum = 0
+        thetaSum = 0
+
+        for i in range(self.numParticles):
+            xSum += self.particles[i].x
+            ySum += self.particles[i].y
+            thetaSum += self.particles[i].theta
+
+        self.state.set_state(xSum/self.numParticles, ySum/self.numParticles, thetaSum/self.numParticles)
+        # print("Estimated State: ", self.state)
         return self.state
 
 
@@ -191,6 +234,8 @@ class E160_PF:
             wallDist = self.FindWallDistance(particle, wall.wall_points, sensorT)
             if wallDist != None:
                 minDist = min(minDist, wallDist)
+
+        # print(minDist)
         return minDist
     
 
@@ -208,7 +253,7 @@ class E160_PF:
         point2 = point2 - point1 # direction vector from point 1
 
         bot = util.Vec2(particle.x, particle.y) # bot vector
-        heading = util.Vec2(math.cos(particle.theta), math.sin(particle.theta)) # heading vector
+        heading = util.Vec2(math.cos(util.angle_wrap(particle.theta+sensorT)), math.sin(util.angle_wrap(particle.theta+sensorT))) # heading vector
 
         # intersection exists if
         # bot + v*heading = point1 + u*point2Dir
@@ -245,6 +290,10 @@ class E160_PF:
 
         def __str__(self):
             return str(self.x) + " " + str(self.y) + " " + str(self.theta) + " " + str(self.weight)
+        
+        def set_weight(self, newWeight):
+            if newWeight != None:
+                self.weight = newWeight
 
 
 
