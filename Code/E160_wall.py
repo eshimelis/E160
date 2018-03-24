@@ -1,11 +1,11 @@
 class E160_wall:
-
     
     def __init__(self, wall_points, slope):
         
         # set up walls
         self.slope = slope
         self.radius = 0.025
+        self.wall_points = wall_points
         
         # assume top point is first
         if slope == "vertical":

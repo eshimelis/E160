@@ -112,6 +112,9 @@ class E160_graphics:
         # self.canvas.bind("<B1-Motion>", self.on_move_press)
         # self.canvas.bind("<ButtonRelease-1>", self.on_button_release)
 
+        # sensor wall intersection
+        self.front_wall_sensor = self.canvas.create_oval(-3,-3,3,3, fill ='orange red', tags=("front_wall_sensor"))
+
         # initilize particle representation
         self.particles_dot = [self.canvas.create_oval(0,0,0,0, fill ='black') for x in range(self.environment.robots[0].PF.numParticles)]
 
@@ -174,18 +177,31 @@ class E160_graphics:
         self.update_arrow(robot.state_des, "des_arrow", 0.25)
         self.update_arrow(robot.state_draw, "est_arrow", 0.25)
 
+        # self.update_point(robot.WallPoint, "front_wall_sensor")
+        # self.front_wall_sensor = self.canvas.create_oval(0,0,0,0, fill ='black', tags=("front_wall_sensor"))
 
     def draw_particles(self, robot):
         
         for i in range(robot.PF.numParticles):
             self.canvas.delete(self.particles_vec[i])
-            self.particles_vec[i] = self.draw_arrow(robot.PF.particles[i], 0.1)
+            self.particles_vec[i] = self.draw_arrow(robot.PF.particles[i], 0.05)
+
         for i in range(robot.PF.numParticles):
             pf_point = [robot.PF.particles[i].x, robot.PF.particles[i].y]
             point = self.scale_points(pf_point, self.scale)
             self.canvas.delete(self.particles_dot[i]) 
             self.particles_dot[i] = self.canvas.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill =  'red')
 
+
+    def update_point(self, pos, tag):
+        if pos != None:
+            # print(pos.x, ',', pos.y)
+            [x, y] = self.scale_points([pos.x, pos.y], self.scale)
+            # print(x, ",", y)
+            # self.canvas.delete(self.front_wall_sensor)
+            self.front_wall_sensor = self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill =  'red')
+            # self.canvas.move(tag, x, y)
+            # self.canvas.tag_raise(tag)
 
     def update_arrow(self, state, tag, length):
         startx = state.x
@@ -204,7 +220,7 @@ class E160_graphics:
         endy = state.y + length*math.sin(state.theta)
         points = [startx, starty, endx, endy]
         [startx, starty, endx, endy] = self.scale_points(points, self.scale)
-        return self.canvas.create_line(startx, starty, endx, endy, arrow="last", fill="dark olive green", width=1)
+        return self.canvas.create_line(startx, starty, endx, endy, fill="orange red", width=2)
 
     def get_inputs(self):
         pass
@@ -313,20 +329,20 @@ class E160_graphics:
             robot.set_manual_control_motors(self.R, self.L)
 
     def up_arrow_key_input(self, event):
-    	self.forward_control.set(25)
+    	self.forward_control.set(100)
     	self.rotate_control.set(0)
 
     def down_arrow_key_input(self, event):
-    	self.forward_control.set(-25)
+    	self.forward_control.set(-100)
     	self.rotate_control.set(0)
 
     def left_arrow_key_input(self, event):
     	self.forward_control.set(0)
-    	self.rotate_control.set(-20)
+    	self.rotate_control.set(-100)
 
     def right_arrow_key_input(self, event):
         self.forward_control.set(0)
-        self.rotate_control.set(20)
+        self.rotate_control.set(100)
     
     def key_released(self, event):
         self.forward_control.set(0)
