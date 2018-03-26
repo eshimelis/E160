@@ -10,17 +10,28 @@ class E160_environment:
 
 
     def __init__(self):
-        self.width = 4.0
-        self.height = 2.0
+        self.width = 4.5
+        self.height = 2.5
 
         # set up walls, putting top left point first
         self.walls = []
+
         self.walls.append(E160_wall([-1, 0, 0, 0],"horizontal"))
         self.walls.append(E160_wall([-1, 0.5, 0, 0.5],"horizontal"))
-        self.walls.append(E160_wall([-1, -0.5, 0.75, -0.5],"horizontal"))
-        # self.walls.append(E160_wall([-0.75, 0.75, 0.75, 0.75],"horizontal"))
-        # self.walls.append(E160_wall([0.5, -0.5, 1.0, -0.5],"horizontal"))
-        self.walls.append(E160_wall([0.75, -0.5, 0.75, 1],"vertical"))
+        # self.walls.append(E160_wall([-1, -0.5, 0.75, -0.5],"horizontal"))
+        self.walls.append(E160_wall([-1, -0.5, 0, -0.5],"horizontal"))
+        self.walls.append(E160_wall([1, -1, 1, 1],"vertical"))
+
+        # outer walls
+        self.walls.append(E160_wall([-1, -1.25, -1, 1.25],"vertical"))
+        self.walls.append(E160_wall([-1, -1.25, 1, -1],"horizontal"))
+        self.walls.append(E160_wall([-1, 1.25, 1, 1],"horizontal"))
+        # self.walls.append(E160_wall([-1.0, -1, -1.0, 1],"vertical"))
+        # self.walls.append(E160_wall([-1.0, -1, -1.0, 1],"vertical"))
+
+        # self.walls.append(E160_wall([-0.5, -0.5, -0.5, 0.5],"vertical"))
+        # self.walls.append(E160_wall([0.5, -0.5, 0.5, 0.5],"vertical"))
+        # self.walls.append(E160_wall([-0.5, 0.5, 0.5, 0.5],"horizontal"))
 
         # create vars for hardware vs simulation
         self.robot_mode = "SIMULATION MODE"#"SIMULATION MODE" or "HARDWARE MODE"

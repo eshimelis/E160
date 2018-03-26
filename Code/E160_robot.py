@@ -29,6 +29,7 @@ class E160_robot:
 
         self.state_odo = E160_state()
         self.state_odo.set_state(-0.75,-0.25,0) # real position for simulation
+        # self.state_odo.set_state(0,0,0) # real position for simulation
 
         self.previous_state_error = []
 
@@ -68,7 +69,7 @@ class E160_robot:
         self.encoder_resolution = 1440
         self.last_encoder_measurements = [0,0]
         self.encoder_measurements = [0,0]
-        self.range_measurements = [0,0,0]
+        self.range_measurements = [float('inf'),float('inf'),float('inf')]
         self.last_simulated_encoder_R = 0
         self.last_simulated_encoder_L = 0
 
@@ -156,11 +157,11 @@ class E160_robot:
         self.state_odo = self.localize(self.state_odo, delta_s, delta_theta, self.range_measurements)
 
         # localize with particle filter
-        self.state_est = self.PF.LocalizeEstWithParticleFilter(self.state_odo, delta_s, delta_theta, self.range_measurements)
+        # self.state_est = self.PF.LocalizeEstWithParticleFilter(self.state_odo, delta_s, delta_theta, self.range_measurements)
         
         # testing
-        # self.state_est = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
-        
+        self.state_est = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
+        # print(self.state_est)
         # for debugging
         # self.WallPoint = self.PF.FindWallDistance(self.state_odo, [0.5, 0.5, 0.5, -0.5], 0)
         # print(self.WallPoint)
@@ -289,15 +290,15 @@ class E160_robot:
     def point_tracker_control(self):
 
         #### Delete after implementing PF ####
-        self.state_est = self.state_odo
+        state_est = self.state_odo
         #### Delete after implementing PF ####
 
         # calculate state error 
-        self.state_error = self.state_des-self.state_est
+        self.state_error = self.state_des-state_est
         error = self.state_error
 
         # stop point tracking if close enough
-        if (self.state_est.xydist(self.state_des) < self.min_ptrack_dist_error and abs(error.theta) < self.min_ptrack_ang_error): 
+        if (state_est.xydist(self.state_des) < self.min_ptrack_dist_error and abs(error.theta) < self.min_ptrack_ang_error): 
             self.point_tracked = True
         else: 
             self.point_tracked = False
@@ -305,7 +306,7 @@ class E160_robot:
 
         if not self.point_tracked:
             
-            alpha = util.ang_diff(math.atan2(error.y, error.x), self.state_est.theta)
+            alpha = util.ang_diff(math.atan2(error.y, error.x), state_est.theta)
             
             # forwards
             if alpha <= math.pi/2 and alpha >= -math.pi/2:
@@ -315,8 +316,8 @@ class E160_robot:
                     beta = -error.theta
                 else:
                     rho = math.sqrt(error.x**2 + error.y**2)
-                    alpha = util.ang_diff(math.atan2(error.y, error.x), self.state_est.theta)
-                    beta = util.ang_diff(util.ang_diff(-self.state_est.theta, alpha), -self.state_des.theta)
+                    alpha = util.ang_diff(math.atan2(error.y, error.x), state_est.theta)
+                    beta = util.ang_diff(util.ang_diff(-state_est.theta, alpha), -self.state_des.theta)
                 v = self.Kpho*rho
 
             # backwards
@@ -327,8 +328,8 @@ class E160_robot:
                     beta = -error.theta
                 else:
                     rho = math.sqrt(error.x**2 + error.y**2)
-                    alpha = util.ang_diff(math.atan2(-error.y, -error.x), self.state_est.theta)
-                    beta = util.ang_diff(util.ang_diff(-self.state_est.theta, alpha), -self.state_des.theta)
+                    alpha = util.ang_diff(math.atan2(-error.y, -error.x), state_est.theta)
+                    beta = util.ang_diff(util.ang_diff(-state_est.theta, alpha), -self.state_des.theta)
                 v = -self.Kpho*rho
 
 

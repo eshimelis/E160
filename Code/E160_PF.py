@@ -12,14 +12,20 @@ class E160_PF:
     def __init__(self, environment, robotWidth, wheel_radius, encoder_resolution):
         self.particles = []
         self.environment = environment
-        self.numParticles = 200
-        
+        self.numParticles = 300
+        self.numRandParticles = 0
+
+        self.resampling_frequency = 2
+        self.currentIteration = self.resampling_frequency
+
+        self.start = True
+
         # maybe should just pass in a robot class?
         self.robotWidth = robotWidth
         self.radius = robotWidth/2
         self.wheel_radius = wheel_radius
         self.encoder_resolution = encoder_resolution
-        self.FAR_READING = 10
+        self.FAR_READING = 3
         
         # PF parameters
         self.IR_sigma = 0.1 # Range finder s.d
@@ -30,12 +36,13 @@ class E160_PF:
         # self.odom_xy_sigma = 0.3  # odometry standard deviation, meters
         # self.odom_heading_sigma = 0.3 # odometry heading s.d
 
-        self.delta_rl_sigma = 0.05
+        # self.delta_rl_sigma = 0.05
+        self.encoder_sigma = 5
 
         self.particle_weight_sum = 0
 
         # define the sensor orientations
-        self.sensor_orientation = [0, math.pi/2, -math.pi/2] # orientations of the sensors on robot
+        self.sensor_orientation = [0, -math.pi/2, math.pi/2] # orientations of the sensors on robot
         self.walls = self.environment.walls
 
         # initialize the current state
@@ -48,7 +55,7 @@ class E160_PF:
         self.map_maxY = 1.0
         self.map_minY = -1.0
         self.InitializeParticles()
-        self.last_encoder_measurements =[0,0]
+        self.last_encoder_measurements = [0,0]
 
     def InitializeParticles(self):
         ''' Populate self.particles with random Particle 
@@ -58,10 +65,9 @@ class E160_PF:
                 None'''
         self.particles = []
         for i in range(0, self.numParticles):
-            self.SetRandomStartPos(i)
-            # startPos = E160_state(0, 0, 0)
-            # self.SetKnownStartPos(i, startPos)
-
+            # self.SetRandomStartPos(i)
+            startPos = E160_state(-0.75, -0.25, 0)
+            self.SetKnownStartPos(i, startPos)
             
     def SetRandomStartPos(self, i):
         xPos = random.uniform(self.map_minX, self.map_maxX)
@@ -69,8 +75,8 @@ class E160_PF:
         theta = random.uniform(-math.pi, math.pi)
         self.particles.append(self.Particle(xPos,yPos,theta,1))
 
-    def SetKnownStartPos(self, i):
-        self.particles.append(self.Particle(0,0,0,1))
+    def SetKnownStartPos(self, i, startPos):
+        self.particles.append(self.Particle(startPos.x,startPos.y,startPos.theta,1))
             
     def LocalizeEstWithParticleFilterEncoder(self, encoder_measurements, sensor_readings):
         ''' Localize the robot with particle filters. Call everything
@@ -79,29 +85,55 @@ class E160_PF:
                 sensor_readings([float, float, float]): sensor readings from range fingers
             Return:
                 None'''
+
+        encoder_delta_left = encoder_measurements[0] - self.last_encoder_measurements[0]
+        encoder_delta_right = encoder_measurements[1] - self.last_encoder_measurements[1]
         
-        # for i in range(self.numParticles):
+        # update previous encoder values
+        self.last_encoder_measurements[0] = encoder_measurements[0]
+        self.last_encoder_measurements[1] = encoder_measurements[1]
+        
+        # if self.start:
+        #     for i in range(self.numParticles):
+        #         self.particles[i].set_weight(self.CalculateWeight(sensor_readings, self.environment.walls, self.particles[i]))
+        #         self.particle_weight_sum += self.particles[i].weight
+            
+        #     # normalize each particle's weight
+        #     for i in range(self.numParticles):
+        #         self.particles[i].weight = self.particles[i].weight/self.particle_weight_sum
+            
+        #     # self.Resample()
+        #     self.start = False
+        # else:
 
-        #     delta_s = 0
-        #     delta_theta = 0
+        if (self.currentIteration % self.resampling_frequency == 0):
+            self.Resample()
+        self.currentIteration += 1
 
-        #     encoder_delta_left = encoder_measurements[0] - self.last_encoder_measurements[0]
-        #     encoder_delta_right = encoder_measurements[1] - self.last_encoder_measurements[1]
+        self.particle_weight_sum = 0
 
-        #     delta_s_left = float(encoder_delta_left)*(math.pi*self.wheel_radius*2)/self.encoder_resolution
-        #     delta_s_right = float(encoder_delta_right)*(math.pi*self.wheel_radius*2)/self.encoder_resolution
+        for i in range(self.numParticles):
 
-        #     # delta_s_left += np.random.normal(0, self.delta_rl_sigma)
-        #     # delta_s_right += np.random.normal(0, self.delta_rl_sigma)
+            encoder_delta_left += np.random.normal(0, self.encoder_sigma)
+            encoder_delta_right += np.random.normal(0, self.encoder_sigma)
 
-        #     delta_s = (delta_s_left + delta_s_right)/2
-        #     delta_theta = (delta_s_left - delta_s_right)/(2*self.radius)
+            delta_s_left = float(encoder_delta_left)*(math.pi*self.wheel_radius*2)/self.encoder_resolution
+            delta_s_right = float(encoder_delta_right)*(math.pi*self.wheel_radius*2)/self.encoder_resolution
 
-        #     self.Propagate(delta_s, delta_theta, i)
-        #     self.particles[i].set_weight(self.CalculateWeight(sensor_readings, self.environment.walls, self.particles[i]))
+            delta_s = (delta_s_left + delta_s_right)/2
+            delta_theta = (delta_s_left - delta_s_right)/(2*self.radius)
 
-        # self.Resample()
-        # return self.GetEstimatedPos()
+            self.Propagate(delta_s, delta_theta, i)
+            # print(self.particle_weight_sum)
+            self.particles[i].set_weight(self.CalculateWeight(sensor_readings, self.environment.walls, self.particles[i]))
+            self.particle_weight_sum += self.particles[i].weight
+
+        # normalize particle weights
+        for i in range(self.numParticles):
+            self.particles[i].weight *= 1.0/self.particle_weight_sum
+
+        # print(self.)
+        return self.GetEstimatedPos()
 
     def LocalizeEstWithParticleFilter(self, state_odo, delta_s, delta_theta, sensor_readings):
         ''' Localize the robot with particle filters. Call everything
@@ -111,12 +143,14 @@ class E160_PF:
                 sensor_readings([float, float, float]): sensor readings from range fingers
             Return:
                 None'''
+        
+        self.Resample()
+
         for i in range(self.numParticles):
             # propogate and weight each particle based on sensor reading
             self.Propagate(delta_s, delta_theta, i)
             self.particles[i].set_weight(self.CalculateWeight(sensor_readings, self.environment.walls, self.particles[i]))
 
-        self.Resample()
         return self.GetEstimatedPos()
 
     def Propagate(self, delta_s, delta_theta, i):
@@ -130,8 +164,8 @@ class E160_PF:
 
         
         # if abs(delta_s) > 0 or abs(delta_theta) > 0:
-        delta_s += np.random.normal(0, self.odom_xy_sigma)
-        delta_theta += np.random.normal(0, self.odom_heading_sigma)
+        # delta_s += np.random.normal(0, self.odom_xy_sigma)
+        # delta_theta += np.random.normal(0, self.odom_heading_sigma)
             
         state = self.particles[i]
 
@@ -159,17 +193,22 @@ class E160_PF:
         # for reading in sensor_readings:
         #         
         # convert measurement to standard normal
-        for wall in walls:
+        # for wall in walls:
 
-            for i in range(len(self.sensor_orientation)):
-                expDist = min(self.FindMinWallDistance(particle, walls, self.sensor_orientation[i]), self.FAR_READING)
-                actDist = min(sensor_readings[i], self.FAR_READING)
+        for i in range(len(self.sensor_orientation)):
+        # for i in range(1):
+            expDist = min(self.FindMinWallDistance(particle, walls, self.sensor_orientation[i]), self.FAR_READING)
+            actDist = min(sensor_readings[i], self.FAR_READING)
 
-                normalizedMeasurement = (expDist - actDist)/self.IR_sigma
-                newWeight *= norm.pdf(normalizedMeasurement)
+            # if actDist == self.FAR_READING:
+            normalizedMeasurement = (expDist - actDist)/(self.IR_sigma)
+            newWeight *= norm.pdf(normalizedMeasurement)
+
         # print(newWeight)
         return newWeight
 
+    # def NormalizeParticles(self):
+        # for i in range(self
 
     def Resample(self):
         '''Resample the particles systematically
@@ -182,19 +221,35 @@ class E160_PF:
         for i in range(self.numParticles):
             self.particle_weight_sum += self.particles[i].weight
         
+        # print(self.particle_weight_sum)
+        # weights = [particle.weight for particle in self.particles]
+        # totalWeight = sum(weights)
+        # normWeights = [weight/totalWeight for weight in weights]
+        # newParticles = np.random.choice(a=self.particles, size=self.numParticles, replace=True, p=normWeights)
+        
+        # self.particles = newParticles
+        
         newParticles = []
 
-        for i in range(self.numParticles):
+        for i in range(self.numParticles - self.numRandParticles):
             r = random.uniform(0, self.particle_weight_sum)
             j = 0
             wsum = self.particles[j].weight
-            while(wsum < r):
+            while(wsum <= r):
                 j += 1
                 wsum += self.particles[j].weight
-
             particle = self.particles[j]
-            newParticles.append(self.Particle(particle.x, particle.y, particle.theta, 1))
+            newParticles.append(self.Particle(particle.x, particle.y, particle.theta, 1.0/self.numParticles))
+        
+        # self.particle_weight_sum = 1.0
 
+        # # include some purely random particles
+        # for i in range(self.numRandParticles):
+        #     xPos = random.uniform(self.map_minX, self.map_maxX)
+        #     yPos = random.uniform(self.map_minY, self.map_maxY)
+        #     theta = random.uniform(-math.pi, math.pi)
+        #     newParticles.append(self.Particle(xPos,yPos,theta,1.0/self.numParticles))
+            
         self.particles = newParticles
 
     def GetEstimatedPos(self):
@@ -206,14 +261,16 @@ class E160_PF:
         
         xSum = 0
         ySum = 0
-        thetaSum = 0
+        sinSum = 0
+        cosSum = 0
 
         for i in range(self.numParticles):
             xSum += self.particles[i].x
             ySum += self.particles[i].y
-            thetaSum += self.particles[i].theta
+            sinSum += math.sin(self.particles[i].theta)
+            cosSum += math.cos(self.particles[i].theta)
 
-        self.state.set_state(xSum/self.numParticles, ySum/self.numParticles, thetaSum/self.numParticles)
+        self.state.set_state(xSum/self.numParticles, ySum/self.numParticles, math.atan2(sinSum, cosSum))
         # print("Estimated State: ", self.state)
         return self.state
 
@@ -232,9 +289,10 @@ class E160_PF:
         
         for wall in walls:
             wallDist = self.FindWallDistance(particle, wall.wall_points, sensorT)
-            if wallDist != None:
-                minDist = min(minDist, wallDist)
-
+            if wallDist == None:
+                minDist = min(minDist, self.FAR_READING)
+            else: minDist = min(minDist, wallDist)
+            
         # print(minDist)
         return minDist
     
@@ -253,7 +311,7 @@ class E160_PF:
         point2 = point2 - point1 # direction vector from point 1
 
         bot = util.Vec2(particle.x, particle.y) # bot vector
-        heading = util.Vec2(math.cos(util.angle_wrap(particle.theta+sensorT)), math.sin(util.angle_wrap(particle.theta+sensorT))) # heading vector
+        heading = util.Vec2(math.cos(particle.theta+sensorT), math.sin(particle.theta+sensorT)) # heading vector
 
         # intersection exists if
         # bot + v*heading = point1 + u*point2Dir
@@ -294,6 +352,3 @@ class E160_PF:
         def set_weight(self, newWeight):
             if newWeight != None:
                 self.weight = newWeight
-
-
-

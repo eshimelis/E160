@@ -106,6 +106,7 @@ class E160_graphics:
 
         # desired and estimated state arrow
         self.arrow_des = self.canvas.create_line(0, 0, 0, 0, tags=("des_arrow",), arrow="last", fill="orange red", width=6)
+        self.arrow_odo = self.canvas.create_line(0, 0, 0, 0, tags=("odo_arrow",), arrow="last", fill="steel blue", width=3)
         self.arrow_est = self.canvas.create_line(0, 0, 0, 0, tags=("est_arrow",), arrow="last", fill="steel blue", width=3)
 
         # self.canvas.bind("<ButtonPress-1>", self.on_button_press)
@@ -175,16 +176,16 @@ class E160_graphics:
 
         # add estimated and desired position arrows
         self.update_arrow(robot.state_des, "des_arrow", 0.25)
-        self.update_arrow(robot.state_draw, "est_arrow", 0.25)
+        self.update_arrow(robot.state_draw, "odo_arrow", 0.25)
 
         # self.update_point(robot.WallPoint, "front_wall_sensor")
         # self.front_wall_sensor = self.canvas.create_oval(0,0,0,0, fill ='black', tags=("front_wall_sensor"))
 
     def draw_particles(self, robot):
         
-        for i in range(robot.PF.numParticles):
-            self.canvas.delete(self.particles_vec[i])
-            self.particles_vec[i] = self.draw_arrow(robot.PF.particles[i], 0.05)
+        # for i in range(robot.PF.numParticles):
+        #     self.canvas.delete(self.particles_vec[i])
+        #     self.particles_vec[i] = self.draw_arrow(robot.PF.particles[i], 0.05)
 
         for i in range(robot.PF.numParticles):
             pf_point = [robot.PF.particles[i].x, robot.PF.particles[i].y]
@@ -192,7 +193,8 @@ class E160_graphics:
             self.canvas.delete(self.particles_dot[i]) 
             self.particles_dot[i] = self.canvas.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill =  'red')
 
-
+        self.update_arrow(robot.state_est, "est_arrow", 0.25)
+        
     def update_point(self, pos, tag):
         if pos != None:
             # print(pos.x, ',', pos.y)

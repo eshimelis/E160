@@ -15,26 +15,6 @@ cmMeasured = [mean(cm15), mean(cm20), mean(cm25), mean(cm30), ...
 
 % combine data vectors
 calData = [cmMeasured, cmTrue];
-
-% % calculate standard error
-% stdError = [std(cm15)/sqrt(length(cm15));
-%             std(cm20)/sqrt(length(cm20));
-%             std(cm25)/sqrt(length(cm25));
-%             std(cm30)/sqrt(length(cm30));
-%             std(cm35)/sqrt(length(cm35));
-%             std(cm40)/sqrt(length(cm40));
-%             std(cm45)/sqrt(length(cm45));
-%             std(cm50)/sqrt(length(cm50));
-%             std(cm55)/sqrt(length(cm55));
-%             std(cm60)/sqrt(length(cm60));
-%             std(cm65)/sqrt(length(cm65));
-%             std(cm70)/sqrt(length(cm70));
-%             std(cm75)/sqrt(length(cm75));
-%             std(cm80)/sqrt(length(cm80));
-%             std(cm85)/sqrt(length(cm85));
-%             std(cm90)/sqrt(length(cm90));
-%             std(cm95)/sqrt(length(cm95));
-%             std(cm100)/sqrt(length(cm100))];
          
 stdError = [std(cm15);
     std(cm20);
