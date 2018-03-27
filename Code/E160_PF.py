@@ -24,8 +24,6 @@ class E160_PF:
         
         # PF parameters
         self.IR_sigma = 0.2 # Range finder s.d
-        # self.odom_xy_sigma = 0.03  # odometry standard deviation, meters
-        # self.odom_heading_sigma = 0.03 # odometry heading s.d
         self.odom_xy_sigma = 0.03  # odometry standard deviation, meters
         self.odom_heading_sigma = 0.03 # odometry heading s.d
         self.odom_sigma = 0.3
