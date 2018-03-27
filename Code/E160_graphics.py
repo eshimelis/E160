@@ -13,7 +13,7 @@ class E160_graphics:
         self.north_west_frame = Frame(self.tk)
         self.north_west_frame.pack(anchor = W)
 
-        self.scale = 400
+        self.scale = 200
         self.canvas = Canvas(self.tk, width=self.environment.width*self.scale, height=self.scale*self.environment.height)
         self.tk.title("E160 - Autonomous Robot Navigation")
         self.canvas.bind("<Button-1>", self.callback)
@@ -107,7 +107,7 @@ class E160_graphics:
         # desired and estimated state arrow
         self.arrow_des = self.canvas.create_line(0, 0, 0, 0, tags=("des_arrow",), arrow="last", fill="orange red", width=6)
         self.arrow_odo = self.canvas.create_line(0, 0, 0, 0, tags=("odo_arrow",), arrow="last", fill="steel blue", width=3)
-        self.arrow_est = self.canvas.create_line(0, 0, 0, 0, tags=("est_arrow",), arrow="last", fill="steel blue", width=3)
+        self.arrow_est = self.canvas.create_line(0, 0, 0, 0, tags=("est_arrow",), arrow="last", fill="chartreuse2", width=3)
 
         # self.canvas.bind("<ButtonPress-1>", self.on_button_press)
         # self.canvas.bind("<B1-Motion>", self.on_move_press)
@@ -133,8 +133,8 @@ class E160_graphics:
     # draws walls on gui
     def draw_wall(self, wall):
 
-        wall_points = self.scale_points(wall.points, self.scale)
-        wall.poly = self.canvas.create_polygon(wall_points, fill='black')
+        wall_points = self.scale_points(wall.wall_points, self.scale)
+        wall.poly = self.canvas.create_line(wall_points, fill='black', width = 4)
 
     def scale_points(self, points, scale):
         scaled_points = []
@@ -170,22 +170,19 @@ class E160_graphics:
         
         # gif update
         robot.tkimage = ImageTk.PhotoImage(robot.robot_gif.rotate(180/3.14*robot.state_draw.theta))
-        robot.image = self.canvas.create_image(robot.state_draw.x, robot.state_draw.y, image=robot.tkimage)
+        # robot.image = self.canvas.create_image(robot.state_draw.x, robot.state_draw.y, image=robot.tkimage)
         robot_points = self.scale_points([robot.state_draw.x, robot.state_draw.y], self.scale)
-        self.canvas.coords(robot.image, *robot_points)
+        # self.canvas.coords(robot.image, *robot_points)
 
-        # add estimated and desired position arrows
-        self.update_arrow(robot.state_des, "des_arrow", 0.25)
-        self.update_arrow(robot.state_draw, "odo_arrow", 0.25)
 
         # self.update_point(robot.WallPoint, "front_wall_sensor")
         # self.front_wall_sensor = self.canvas.create_oval(0,0,0,0, fill ='black', tags=("front_wall_sensor"))
 
     def draw_particles(self, robot):
         
-        # for i in range(robot.PF.numParticles):
-        #     self.canvas.delete(self.particles_vec[i])
-        #     self.particles_vec[i] = self.draw_arrow(robot.PF.particles[i], 0.05)
+        for i in range(robot.PF.numParticles):
+            self.canvas.delete(self.particles_vec[i])
+            self.particles_vec[i] = self.draw_arrow(robot.PF.particles[i], 0.05)
 
         for i in range(robot.PF.numParticles):
             pf_point = [robot.PF.particles[i].x, robot.PF.particles[i].y]
@@ -193,6 +190,9 @@ class E160_graphics:
             self.canvas.delete(self.particles_dot[i]) 
             self.particles_dot[i] = self.canvas.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill =  'red')
 
+        # add estimated and desired position arrows
+        self.update_arrow(robot.state_des, "des_arrow", 0.25)
+        self.update_arrow(robot.state_draw, "odo_arrow", 0.25)
         self.update_arrow(robot.state_est, "est_arrow", 0.25)
         
     def update_point(self, pos, tag):
@@ -331,20 +331,36 @@ class E160_graphics:
             robot.set_manual_control_motors(self.R, self.L)
 
     def up_arrow_key_input(self, event):
-    	self.forward_control.set(100)
-    	self.rotate_control.set(0)
+        if self.environment.control_mode == "MANUAL CONTROL MODE":
+            self.forward_control.set(20)
+            self.rotate_control.set(0)
+        else:
+            self.forward_control.set(100)
+            self.rotate_control.set(0)
 
     def down_arrow_key_input(self, event):
-    	self.forward_control.set(-100)
-    	self.rotate_control.set(0)
+        if self.environment.control_mode == "MANUAL CONTROL MODE":
+            self.forward_control.set(-20)
+            self.rotate_control.set(0)
+        else:
+            self.forward_control.set(-100)
+            self.rotate_control.set(0)
 
     def left_arrow_key_input(self, event):
-    	self.forward_control.set(0)
-    	self.rotate_control.set(-100)
+        if self.environment.control_mode == "MANUAL CONTROL MODE":
+            self.forward_control.set(0)
+            self.rotate_control.set(-20)
+        else:
+            self.forward_control.set(0)
+            self.rotate_control.set(-100)
 
     def right_arrow_key_input(self, event):
-        self.forward_control.set(0)
-        self.rotate_control.set(100)
+        if self.environment.control_mode == "MANUAL CONTROL MODE":
+            self.forward_control.set(0)
+            self.rotate_control.set(20)
+        else:
+            self.forward_control.set(0)
+            self.rotate_control.set(100)
     
     def key_released(self, event):
         self.forward_control.set(0)

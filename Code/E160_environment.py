@@ -10,28 +10,52 @@ class E160_environment:
 
 
     def __init__(self):
-        self.width = 4.5
-        self.height = 2.5
+        # self.width = 4.5
+        # self.height = 2.5
+
+        self.width = 9
+        self.height = 5
+
+        self.INtoCM = 0.0254
 
         # set up walls, putting top left point first
         self.walls = []
 
-        self.walls.append(E160_wall([-1, 0, 0, 0],"horizontal"))
-        self.walls.append(E160_wall([-1, 0.5, 0, 0.5],"horizontal"))
-        # self.walls.append(E160_wall([-1, -0.5, 0.75, -0.5],"horizontal"))
-        self.walls.append(E160_wall([-1, -0.5, 0, -0.5],"horizontal"))
-        self.walls.append(E160_wall([1, -1, 1, 1],"vertical"))
+        # self.walls.append(E160_wall([-1, 0, 0, 0]))
+        # self.walls.append(E160_wall([-1, 0.5, 0, 0.5]))
+        # self.walls.append(E160_wall([-1, -0.5, 0, -0.5]))
+        # self.walls.append(E160_wall([1, -1, 1, 1]))
 
         # outer walls
-        self.walls.append(E160_wall([-1, -1.25, -1, 1.25],"vertical"))
-        self.walls.append(E160_wall([-1, -1.25, 1, -1],"horizontal"))
-        self.walls.append(E160_wall([-1, 1.25, 1, 1],"horizontal"))
-        # self.walls.append(E160_wall([-1.0, -1, -1.0, 1],"vertical"))
-        # self.walls.append(E160_wall([-1.0, -1, -1.0, 1],"vertical"))
+        # self.walls.append(E160_wall([-1, -1.25, -1, 1.25]))
+        # self.walls.append(E160_wall([-1, -1.25, 1, -1]))
+        # self.walls.append(E160_wall([-1, 1.25, 1, 1]))
+        
+        ### self.walls.append(E160_wall([-0.5, -0.5, -0.5, 0.5],"vertical"))
+        ### self.walls.append(E160_wall([0.5, -0.5, 0.5, 0.5],"vertical"))
+        ### self.walls.append(E160_wall([-0.5, 0.5, 0.5, 0.5],"horizontal"))
 
-        # self.walls.append(E160_wall([-0.5, -0.5, -0.5, 0.5],"vertical"))
-        # self.walls.append(E160_wall([0.5, -0.5, 0.5, 0.5],"vertical"))
-        # self.walls.append(E160_wall([-0.5, 0.5, 0.5, 0.5],"horizontal"))
+        ## South Maze
+
+        # outer walls
+        # self.walls.append(E160_wall([-2, -2, -2, 2]))
+        # self.walls.append(E160_wall([2, -2, 2, 2]))
+        # self.walls.append(E160_wall([-2, -2, 2, -2]))
+        # self.walls.append(E160_wall([-2, 2, 2, 2]))
+
+        # # 
+        # self.walls.append(E160_wall([-2, 2 - 44*self.INtoCM, -2 + 14.5*self.INtoCM, 2 - 44*self.INtoCM]))
+        # self.walls.append(E160_wall([-2 + 22*self.INtoCM, 2, -2 + 22*self.INtoCM, 2 - 28*self.INtoCM]))
+        # self.walls.append(E160_wall([-2 + (6.5+22)*self.INtoCM, 2, -2 + (6.5+22)*self.INtoCM, 2 - 17*self.INtoCM]))
+        # self.walls.append(E160_wall([-2 + (3.5+22)*self.INtoCM, 2-17*self.INtoCM, -2 + (3.5+22)*self.INtoCM, 2 - 28*self.INtoCM]))
+        ## self.walls.append(E160_wall([-2 + (3.5+22)*self.INtoCM, 2-17*self.INtoCM, -2 + (3.5+22)*self.INtoCM, 2 - 28*self.INtoCM]))
+
+        # self.walls.append(E160_wall([-2, 2 - 44*self.INtoCM - 28*self.INtoCM, 2, 2 - 44*self.INtoCM - 28*self.INtoCM]))
+        
+        ## corner test
+        self.walls.append(E160_wall([1, -1, 1, 1]))
+        self.walls.append(E160_wall([-1, -1, 1, -1]))
+        self.walls.append(E160_wall([-1, -1+48*self.INtoCM, 1, -1+48*self.INtoCM]))
 
         # create vars for hardware vs simulation
         self.robot_mode = "SIMULATION MODE"#"SIMULATION MODE" or "HARDWARE MODE"

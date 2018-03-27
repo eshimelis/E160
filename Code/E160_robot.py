@@ -73,6 +73,9 @@ class E160_robot:
         self.last_simulated_encoder_R = 0
         self.last_simulated_encoder_L = 0
 
+        # distance sensor offsets from center of robot [front, right, left]
+        self.sensor_offset = [-0.076, -0.076, -0.076]
+
         self.front_dist = 0
         self.left_dist = 0
         self.right_dist = 0
@@ -195,17 +198,17 @@ class E160_robot:
                 self.last_encoder_measurements = encoder_measurements
                 self.start = False
 
-            # solution is of the form y = c1 + c2/(x^c3), where the coefficients were
+            # solution is of the form y = (c1 + c2/(x^c3))/100, where the coefficients were
             # calculated in MATLAB
             c = [-17.5818421751112, 7402.73728818712, 0.791041234703247]
 
-            # convert range_measurements to cm using non linear inverse fit
+            # convert range_measurements to m using non linear inverse fit
             for i in range(len(range_measurements)):
                 
                 x = range_measurements[i]
 
-                range_measurements[i] = c[0] + c[1]/(x**c[2])
-
+                range_measurements[i] = (c[0] + c[1]/(x**c[2]))/100.0
+        
             # keep track of measurement
             if len(self.last_measurements) < self.MAX_PAST_MEASUREMENTS:
                 self.last_measurements.append(range_measurements)
@@ -220,9 +223,9 @@ class E160_robot:
         # obtain sensor measurements !!!!!! Chris
         elif self.environment.robot_mode == "SIMULATION MODE":
             encoder_measurements = self.simulate_encoders(self.R, self.L, deltaT)
-            sensor1 = self.simulate_range_finder(self.state_odo, self.PF.sensor_orientation[0])
-            sensor2 = self.simulate_range_finder(self.state_odo, self.PF.sensor_orientation[1])
-            sensor3 = self.simulate_range_finder(self.state_odo, self.PF.sensor_orientation[2])
+            sensor1 = self.simulate_range_finder(self.state_odo, self.PF.sensor_orientation[0]) + self.sensor_offset[0]
+            sensor2 = self.simulate_range_finder(self.state_odo, self.PF.sensor_orientation[1]) + self.sensor_offset[1]
+            sensor3 = self.simulate_range_finder(self.state_odo, self.PF.sensor_orientation[2]) + self.sensor_offset[2]
             range_measurements = [sensor1, sensor2, sensor3]
 
         return encoder_measurements, range_measurements

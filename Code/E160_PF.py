@@ -12,32 +12,26 @@ class E160_PF:
     def __init__(self, environment, robotWidth, wheel_radius, encoder_resolution):
         self.particles = []
         self.environment = environment
-        self.numParticles = 300
+        self.numParticles = 800
         self.numRandParticles = 0
-
-        self.resampling_frequency = 2
-        self.currentIteration = self.resampling_frequency
-
-        self.start = True
-
+        
         # maybe should just pass in a robot class?
         self.robotWidth = robotWidth
         self.radius = robotWidth/2
         self.wheel_radius = wheel_radius
         self.encoder_resolution = encoder_resolution
-        self.FAR_READING = 3
+        self.FAR_READING = 8
         
         # PF parameters
-        self.IR_sigma = 0.1 # Range finder s.d
-        # self.odom_xy_sigma = 1.25   # odometry delta_s s.d
-        # self.odom_heading_sigma = 0.75  # odometry heading s.d
-        self.odom_xy_sigma = 0.05  # odometry standard deviation, meters
-        self.odom_heading_sigma = 0.03  # odometry heading s.d
-        # self.odom_xy_sigma = 0.3  # odometry standard deviation, meters
-        # self.odom_heading_sigma = 0.3 # odometry heading s.d
+        self.IR_sigma = 0.2 # Range finder s.d
+        # self.odom_xy_sigma = 0.03  # odometry standard deviation, meters
+        # self.odom_heading_sigma = 0.03 # odometry heading s.d
+        self.odom_xy_sigma = 0.03  # odometry standard deviation, meters
+        self.odom_heading_sigma = 0.03 # odometry heading s.d
+        self.odom_sigma = 0.3
+        # self.encoder_sigma = 4
 
-        # self.delta_rl_sigma = 0.05
-        self.encoder_sigma = 5
+        self.sampling_threshold = 0.8
 
         self.particle_weight_sum = 0
 
@@ -65,9 +59,9 @@ class E160_PF:
                 None'''
         self.particles = []
         for i in range(0, self.numParticles):
-            # self.SetRandomStartPos(i)
-            startPos = E160_state(-0.75, -0.25, 0)
-            self.SetKnownStartPos(i, startPos)
+            self.SetRandomStartPos(i)
+            # startPos = E160_state(-0.75, -0.25, 0)
+            # self.SetKnownStartPos(i, startPos)
             
     def SetRandomStartPos(self, i):
         xPos = random.uniform(self.map_minX, self.map_maxX)
@@ -85,46 +79,36 @@ class E160_PF:
                 sensor_readings([float, float, float]): sensor readings from range fingers
             Return:
                 None'''
-
+        print(sensor_readings)
         encoder_delta_left = encoder_measurements[0] - self.last_encoder_measurements[0]
         encoder_delta_right = encoder_measurements[1] - self.last_encoder_measurements[1]
         
         # update previous encoder values
         self.last_encoder_measurements[0] = encoder_measurements[0]
         self.last_encoder_measurements[1] = encoder_measurements[1]
-        
-        # if self.start:
-        #     for i in range(self.numParticles):
-        #         self.particles[i].set_weight(self.CalculateWeight(sensor_readings, self.environment.walls, self.particles[i]))
-        #         self.particle_weight_sum += self.particles[i].weight
-            
-        #     # normalize each particle's weight
-        #     for i in range(self.numParticles):
-        #         self.particles[i].weight = self.particles[i].weight/self.particle_weight_sum
-            
-        #     # self.Resample()
-        #     self.start = False
-        # else:
-
-        if (self.currentIteration % self.resampling_frequency == 0):
-            self.Resample()
-        self.currentIteration += 1
 
         self.particle_weight_sum = 0
 
         for i in range(self.numParticles):
 
-            encoder_delta_left += np.random.normal(0, self.encoder_sigma)
-            encoder_delta_right += np.random.normal(0, self.encoder_sigma)
+            # encoder_delta_left += np.random.normal(0, self.encoder_sigma)
+            # encoder_delta_right += np.random.normal(0, self.encoder_sigma)
+
+            # self.encoder_sigma = 0.1
+            # encoder_delta_left *= np.random.normal(1, self.encoder_sigma)
+            # encoder_delta_right *= np.random.normal(1, self.encoder_sigma)
 
             delta_s_left = float(encoder_delta_left)*(math.pi*self.wheel_radius*2)/self.encoder_resolution
             delta_s_right = float(encoder_delta_right)*(math.pi*self.wheel_radius*2)/self.encoder_resolution
+
+            # add process noise
+            delta_s_left *= np.random.normal(1, self.odom_sigma)
+            delta_s_right *= np.random.normal(1, self.odom_sigma)
 
             delta_s = (delta_s_left + delta_s_right)/2
             delta_theta = (delta_s_left - delta_s_right)/(2*self.radius)
 
             self.Propagate(delta_s, delta_theta, i)
-            # print(self.particle_weight_sum)
             self.particles[i].set_weight(self.CalculateWeight(sensor_readings, self.environment.walls, self.particles[i]))
             self.particle_weight_sum += self.particles[i].weight
 
@@ -132,7 +116,16 @@ class E160_PF:
         for i in range(self.numParticles):
             self.particles[i].weight *= 1.0/self.particle_weight_sum
 
-        # print(self.)
+        # check if resampling is required
+        weights = [particle.weight for particle in self.particles]
+        CV = np.var(weights)/(np.mean(weights)**2)        
+        ESS = 1.0/(1.0 + CV)
+
+        if (ESS < self.sampling_threshold):
+            print("Resampling")
+            # self.Resample()
+            self.ResampleLowVar()
+    
         return self.GetEstimatedPos()
 
     def LocalizeEstWithParticleFilter(self, state_odo, delta_s, delta_theta, sensor_readings):
@@ -144,12 +137,34 @@ class E160_PF:
             Return:
                 None'''
         
-        self.Resample()
+        self.particle_weight_sum = 0
 
         for i in range(self.numParticles):
             # propogate and weight each particle based on sensor reading
-            self.Propagate(delta_s, delta_theta, i)
+            
+            # delta_s_new = delta_s * np.random.normal(1, self.odom_xy_sigma)
+            # delta_theta_new = delta_theta * np.random.normal(1, self.odom_heading_sigma)
+            
+            delta_s_new = delta_s + np.random.normal(0, self.odom_xy_sigma)
+            delta_theta_new = delta_theta + np.random.normal(0, self.odom_heading_sigma)
+
+            self.Propagate(delta_s_new, delta_theta_new, i)
             self.particles[i].set_weight(self.CalculateWeight(sensor_readings, self.environment.walls, self.particles[i]))
+            self.particle_weight_sum += self.particles[i].weight
+
+        # normalize particle weights
+        for i in range(self.numParticles):
+            self.particles[i].weight *= 1.0/self.particle_weight_sum
+
+        # check if resampling is required
+        weights = [particle.weight for particle in self.particles]
+        CV = np.var(weights)/(np.mean(weights)**2)        
+        ESS = 1.0/(1.0 + CV)
+
+        if (ESS < self.sampling_threshold):
+            print("Resampling")
+            # self.Resample()
+            self.ResampleLowVar()
 
         return self.GetEstimatedPos()
 
@@ -160,24 +175,14 @@ class E160_PF:
                 delta_theta(float): change in heading based on odometry
             return:
                 nothing'''
-        # add student code here 
 
-        
-        # if abs(delta_s) > 0 or abs(delta_theta) > 0:
-        # delta_s += np.random.normal(0, self.odom_xy_sigma)
-        # delta_theta += np.random.normal(0, self.odom_heading_sigma)
-            
         state = self.particles[i]
 
         delta_x = delta_s * math.cos(state.theta + delta_theta/2)
         delta_y = delta_s * math.sin(state.theta + delta_theta/2)
 
-
         # minus because robot is backwards
-        self.particles[i].set_state(state.x - delta_x, state.y - delta_y, util.angle_wrap(state.theta + delta_theta))
-        
-        # end student code here
-        
+        self.particles[i].set_state(state.x - delta_x, state.y - delta_y, util.angle_wrap(state.theta + delta_theta))        
         
     def CalculateWeight(self, sensor_readings, walls, particle):
         '''Calculate the weight of a particular particle
@@ -189,26 +194,37 @@ class E160_PF:
             return:
                 new weight of the particle (float) '''
 
-        newWeight = 1
-        # for reading in sensor_readings:
-        #         
-        # convert measurement to standard normal
-        # for wall in walls:
+        weight = particle.weight
+        # weight = 1.0
 
         for i in range(len(self.sensor_orientation)):
-        # for i in range(1):
-            expDist = min(self.FindMinWallDistance(particle, walls, self.sensor_orientation[i]), self.FAR_READING)
-            actDist = min(sensor_readings[i], self.FAR_READING)
+            z = min(self.FindMinWallDistance(particle, walls, self.sensor_orientation[i]), self.FAR_READING)
+            zexp = min(sensor_readings[i], self.FAR_READING)
 
-            # if actDist == self.FAR_READING:
-            normalizedMeasurement = (expDist - actDist)/(self.IR_sigma)
-            newWeight *= norm.pdf(normalizedMeasurement)
+            eta = 0.5
+            lam = 0.1
 
-        # print(newWeight)
-        return newWeight
+            # measurement noise model
+            normalizedMeasurement = (z - zexp)/(self.IR_sigma)
+            measurementNoise = eta*norm.pdf(normalizedMeasurement)
 
-    # def NormalizeParticles(self):
-        # for i in range(self
+            # unexpected noise model
+            if z < zexp:
+                unexpectedNoise = eta*lam*math.exp(-lam*z)
+            else: unexpectedNoise = 0
+
+            # random noise model
+            randomNoise = eta/self.FAR_READING
+
+            # max range model
+            # if z >= self.FAR_READING:
+            #     maxNoise = eta
+            # else:
+            maxNoise = 0
+
+            weight *= (measurementNoise + unexpectedNoise + randomNoise + maxNoise)
+
+        return weight
 
     def Resample(self):
         '''Resample the particles systematically
@@ -217,25 +233,17 @@ class E160_PF:
             Return:
                 None'''
         
-        self.particle_weight_sum = 0
-        for i in range(self.numParticles):
-            self.particle_weight_sum += self.particles[i].weight
-        
-        # print(self.particle_weight_sum)
-        # weights = [particle.weight for particle in self.particles]
-        # totalWeight = sum(weights)
-        # normWeights = [weight/totalWeight for weight in weights]
-        # newParticles = np.random.choice(a=self.particles, size=self.numParticles, replace=True, p=normWeights)
-        
-        # self.particles = newParticles
+        # self.particle_weight_sum = 0
+        # for i in range(self.numParticles):
+        #     self.particle_weight_sum += self.particles[i].weight
         
         newParticles = []
 
-        for i in range(self.numParticles - self.numRandParticles):
+        for i in range(self.numParticles):
             r = random.uniform(0, self.particle_weight_sum)
             j = 0
             wsum = self.particles[j].weight
-            while(wsum <= r):
+            while(wsum < r):
                 j += 1
                 wsum += self.particles[j].weight
             particle = self.particles[j]
@@ -252,6 +260,31 @@ class E160_PF:
             
         self.particles = newParticles
 
+    def ResampleLowVar(self):
+        '''Resample the particles systematically
+            Args:
+                None
+            Return:
+                None'''
+
+        newParticles = []
+
+        r = random.uniform(0, 1.0/self.numParticles)
+        c = self.particles[0].weight
+        i = 0
+
+        for j in range(self.numParticles):
+            U = r + (j)*(1.0/self.numParticles)
+            
+            while U > c:
+                i = i + 1
+                c += self.particles[i].weight
+            
+            particle = self.particles[i]
+            newParticles.append(self.Particle(particle.x, particle.y, particle.theta, 1.0))
+
+        self.particles = newParticles
+
     def GetEstimatedPos(self):
         ''' Calculate the mean of the particles and return it 
             Args:
@@ -264,14 +297,26 @@ class E160_PF:
         sinSum = 0
         cosSum = 0
 
+        totalWeight = 0
         for i in range(self.numParticles):
-            xSum += self.particles[i].x
-            ySum += self.particles[i].y
-            sinSum += math.sin(self.particles[i].theta)
-            cosSum += math.cos(self.particles[i].theta)
+            totalWeight += self.particles[i].weight
 
-        self.state.set_state(xSum/self.numParticles, ySum/self.numParticles, math.atan2(sinSum, cosSum))
-        # print("Estimated State: ", self.state)
+        for i in range(self.numParticles):
+            # TODO: weight each value by the particle weight 
+            # (i.e higher particles contribute more to the state estimate)
+            weight = self.particles[i].weight
+
+            # xSum += self.particles[i].x * (1.0/self.numParticles)
+            # ySum += self.particles[i].y * (1.0/self.numParticles)
+            # sinSum += math.sin(self.particles[i].theta) * (1.0/self.numParticles)
+            # cosSum += math.cos(self.particles[i].theta) * (1.0/self.numParticles)
+
+            xSum += self.particles[i].x * (weight/totalWeight)
+            ySum += self.particles[i].y * (weight/totalWeight)
+            sinSum += math.sin(self.particles[i].theta) * (weight/totalWeight)
+            cosSum += math.cos(self.particles[i].theta) * (weight/totalWeight)
+
+        self.state.set_state(xSum, ySum, math.atan2(sinSum, cosSum))
         return self.state
 
 
@@ -350,5 +395,4 @@ class E160_PF:
             return str(self.x) + " " + str(self.y) + " " + str(self.theta) + " " + str(self.weight)
         
         def set_weight(self, newWeight):
-            if newWeight != None:
-                self.weight = newWeight
+            self.weight = newWeight
