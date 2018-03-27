@@ -28,7 +28,7 @@ class E160_robot:
         self.state_draw.set_state(0,0,0)
 
         self.state_odo = E160_state()
-        self.state_odo.set_state(-0.75,-0.25,0) # real position for simulation
+        self.state_odo.set_state(0.975,3.095,-math.pi/2) # real position for simulation
         # self.state_odo.set_state(0,0,0) # real position for simulation
 
         self.previous_state_error = []
@@ -93,28 +93,36 @@ class E160_robot:
         self.min_ptrack_dist_error = 0.03   # meters
         self.min_ptrack_ang_error = 0.05    # radians
 
-        #simulation gains
-        self.Kpho = 1.4#1.0
-        self.Kalpha = 3.0#2.0
-        self.Kbeta = -1.2#-0.5
-
-        # hardware gains
-        # self.Kpho = 1.0#1.0
-        # self.Kalpha = 2.8#2.0
-        # self.Kbeta = -2.5#-0.5
+        if self.environment.robot_mode == "SIMULATION MODE":
+            #simulation gains
+            self.Kpho = 1.4#1.0
+            self.Kalpha = 3.0#2.0
+            self.Kbeta = -1.2#-0.5
+            self.max_velocity = 0.05
+            self.max_ang_velocity = 0.8
+        else:
+            # hardware gains
+            self.Kpho = 1.0#1.0
+            self.Kalpha = 2.8#2.0
+            self.Kbeta = -2.5#-0.5
+            self.max_velocity = 0.1
+            self.max_ang_velocity = 0.8
         
-        self.max_velocity = 0.05
-        self.max_ang_velocity = 0.8
+        
         self.point_tracked = True
         self.encoder_per_sec_to_rad_per_sec = 10
 
         self.path_counter = 0
-        self.path = [E160_state(0.25, -0.25, 0), E160_state(0.25, -0.25, math.pi/2),
-                    E160_state(0.25, 0.25, math.pi/2), E160_state(0.25, 0.25, math.pi),
-                    E160_state(-0.75, 0.25, math.pi), E160_state(-0.75, 0.25, 0),
-                    E160_state(0.25, 0.25, 0), E160_state(0.25, 0.25, math.pi/2), 
-                    E160_state(0.25, -0.25, math.pi/2), E160_state(0.25, -0.25, 0),
-                    E160_state(-0.75, -0.25, 0)]
+        self.path = [E160_state(0.875, 0.71, -math.pi/2), E160_state(0.875, 0.71, 0),
+                     E160_state(3, 0.71, 0), E160_state(3, 0.71, -math.pi),
+                     E160_state(0.875, 0.71, -math.pi), E160_state(0.875, 0.71, math.pi/2),
+                     E160_state(1.75/2,3, math.pi/2), E160_state(0.875, 0.71, -math.pi)]
+        # self.path = [E160_state(0.25, -0.25, 0), E160_state(0.25, -0.25, math.pi/2),
+        #             E160_state(0.25, 0.25, math.pi/2), E160_state(0.25, 0.25, math.pi),
+        #             E160_state(-0.75, 0.25, math.pi), E160_state(-0.75, 0.25, 0),
+        #             E160_state(0.25, 0.25, 0), E160_state(0.25, 0.25, math.pi/2), 
+        #             E160_state(0.25, -0.25, math.pi/2), E160_state(0.25, -0.25, 0),
+        #             E160_state(-0.75, -0.25, 0)]
         # self.path = [E160_state(0.5, 0, 1.57), E160_state(0.5, 0.5, 3.14),
         #              E160_state(0, 0.5, 3.14+1.57), E160_state(0, 0, 0),
 
@@ -144,8 +152,6 @@ class E160_robot:
         #              E160_state(0, 0, 3.14), E160_state(0, 0, 0), E160_state(0, 0, -3.14), E160_state(0, 0, 2), E160_state(0, 0, -2)]
 
         self.PF = E160_PF(environment, self.width, self.wheel_radius, self.encoder_resolution)
-
-        self.WallPoint = util.Vec2(0, 0)
 
     def update(self, deltaT):
 

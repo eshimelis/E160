@@ -12,7 +12,7 @@ class E160_PF:
     def __init__(self, environment, robotWidth, wheel_radius, encoder_resolution):
         self.particles = []
         self.environment = environment
-        self.numParticles = 800
+        self.numParticles = 200
         self.numRandParticles = 0
         
         # maybe should just pass in a robot class?
@@ -23,13 +23,18 @@ class E160_PF:
         self.FAR_READING = 8
         
         # PF parameters
-        self.IR_sigma = 0.2 # Range finder s.d
-        self.odom_xy_sigma = 0.03  # odometry standard deviation, meters
-        self.odom_heading_sigma = 0.03 # odometry heading s.d
-        self.odom_sigma = 0.3
-        # self.encoder_sigma = 4
-
-        self.sampling_threshold = 0.8
+        if environment.robot_mode == "SIMULATION MODE":
+            self.IR_sigma = 0.15 # Range finder s.d
+            self.odom_xy_sigma = 0.03  # odometry standard deviation, meters
+            self.odom_heading_sigma = 0.03 # odometry heading s.d
+            self.odom_sigma = 0.4
+            self.sampling_threshold = 0.4
+        else:
+            self.IR_sigma = 0.5 # Range finder s.d
+            self.odom_xy_sigma = 0.03  # odometry standard deviation, meters
+            self.odom_heading_sigma = 0.03 # odometry heading s.d
+            self.odom_sigma = 0.3
+            self.sampling_threshold = 0.4
 
         self.particle_weight_sum = 0
 
@@ -42,10 +47,10 @@ class E160_PF:
         self.state.set_state(0,0,0)
 
         # TODO: change this later
-        self.map_maxX = 1.0
-        self.map_minX = -1.0
-        self.map_maxY = 1.0
-        self.map_minY = -1.0
+        self.map_maxX = 4.0
+        self.map_minX = 0
+        self.map_maxY = 4.0
+        self.map_minY = 0
         self.InitializeParticles()
         self.last_encoder_measurements = [0,0]
 
@@ -57,9 +62,9 @@ class E160_PF:
                 None'''
         self.particles = []
         for i in range(0, self.numParticles):
-            self.SetRandomStartPos(i)
-            # startPos = E160_state(-0.75, -0.25, 0)
-            # self.SetKnownStartPos(i, startPos)
+            # self.SetRandomStartPos(i)
+            startPos = E160_state(0.975,3.095,-math.pi/2)
+            self.SetKnownStartPos(i, startPos)
             
     def SetRandomStartPos(self, i):
         xPos = random.uniform(self.map_minX, self.map_maxX)
@@ -134,7 +139,7 @@ class E160_PF:
                 sensor_readings([float, float, float]): sensor readings from range fingers
             Return:
                 None'''
-        
+        print(sensor_readings)
         self.particle_weight_sum = 0
 
         for i in range(self.numParticles):
@@ -215,10 +220,10 @@ class E160_PF:
             randomNoise = eta/self.FAR_READING
 
             # max range model
-            # if z >= self.FAR_READING:
-            #     maxNoise = eta
-            # else:
-            maxNoise = 0
+            if zexp >= self.FAR_READING and z >= self.FAR_READING:
+                maxNoise = eta
+            else:
+                maxNoise = 0
 
             weight *= (measurementNoise + unexpectedNoise + randomNoise + maxNoise)
 

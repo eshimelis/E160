@@ -53,9 +53,24 @@ class E160_environment:
         # self.walls.append(E160_wall([-2, 2 - 44*self.INtoCM - 28*self.INtoCM, 2, 2 - 44*self.INtoCM - 28*self.INtoCM]))
         
         ## corner test
-        self.walls.append(E160_wall([1, -1, 1, 1]))
-        self.walls.append(E160_wall([-1, -1, 1, -1]))
-        self.walls.append(E160_wall([-1, -1+48*self.INtoCM, 1, -1+48*self.INtoCM]))
+        # self.walls.append(E160_wall([1, -1, 1, 1]))
+        # self.walls.append(E160_wall([-1, -1, 1, -1]))
+        # self.walls.append(E160_wall([-1, -1+48*self.INtoCM, 1, -1+48*self.INtoCM]))
+
+        ## Parsons corner map [x1, y1, x2, y2] (Next to Lab/Room 2391)
+        wall1 = [0, 0, 0, 4]
+        wall2 = [0, 0, 4, 0]
+        wall3 = [1.75, 1.8, 1.75, 4]
+        wall4 = [1.75, 1.8, 1.75+0.87, 1.8]
+        wall5 = [1.75+0.87, 1.8, 1.75+0.87, 1.8-0.38]
+        wall6 = [1.75+0.87, 1.8-0.38, 4, 1.8-0.38]
+
+        self.walls.append(E160_wall(wall1))
+        self.walls.append(E160_wall(wall2))
+        self.walls.append(E160_wall(wall3))
+        self.walls.append(E160_wall(wall4))
+        self.walls.append(E160_wall(wall5))
+        self.walls.append(E160_wall(wall6))
 
         # create vars for hardware vs simulation
         self.robot_mode = "SIMULATION MODE"#"SIMULATION MODE" or "HARDWARE MODE"

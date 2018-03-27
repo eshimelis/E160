@@ -105,9 +105,9 @@ class E160_graphics:
         self.theta_des_entry.pack()
 
         # desired and estimated state arrow
-        self.arrow_des = self.canvas.create_line(0, 0, 0, 0, tags=("des_arrow",), arrow="last", fill="orange red", width=6)
-        self.arrow_odo = self.canvas.create_line(0, 0, 0, 0, tags=("odo_arrow",), arrow="last", fill="steel blue", width=3)
-        self.arrow_est = self.canvas.create_line(0, 0, 0, 0, tags=("est_arrow",), arrow="last", fill="chartreuse2", width=3)
+        self.arrow_des = self.canvas.create_line(0, 0, 0, 0, tags=("des_arrow",), arrow="last", fill="orange red", width=8)
+        self.arrow_odo = self.canvas.create_line(0, 0, 0, 0, tags=("odo_arrow",), arrow="last", fill="steel blue", width=4)
+        self.arrow_est = self.canvas.create_line(0, 0, 0, 0, tags=("est_arrow",), arrow="last", fill="chartreuse2", width=4)
 
         # self.canvas.bind("<ButtonPress-1>", self.on_button_press)
         # self.canvas.bind("<B1-Motion>", self.on_move_press)
@@ -120,7 +120,7 @@ class E160_graphics:
         self.particles_dot = [self.canvas.create_oval(0,0,0,0, fill ='black') for x in range(self.environment.robots[0].PF.numParticles)]
 
         # initilize particle representation
-        self.particles_vec = [self.canvas.create_line(0, 0, 0, 0, arrow="last", fill="medium sea green", width=1) for x in range(self.environment.robots[0].PF.numParticles)]
+        self.particles_vec = [self.canvas.create_line(0, 0, 0, 0, arrow="last", fill="medium sea green", width=2) for x in range(self.environment.robots[0].PF.numParticles)]
 
         # draw static environment
         for w in self.environment.walls:
@@ -134,7 +134,7 @@ class E160_graphics:
     def draw_wall(self, wall):
 
         wall_points = self.scale_points(wall.wall_points, self.scale)
-        wall.poly = self.canvas.create_line(wall_points, fill='black', width = 4)
+        wall.poly = self.canvas.create_line(wall_points, fill='black', width = 6)
 
     def scale_points(self, points, scale):
         scaled_points = []
@@ -142,10 +142,10 @@ class E160_graphics:
 
             if i % 2 == 0:
                 # for x values, just multiply times scale factor to go from meters to pixels
-                scaled_points.append(self.environment.width/2*scale + points[i]*scale)
+                scaled_points.append(self.environment.width/2*scale + (points[i]-2)*scale)
 
                 # only flip y for x,y points, not for circle radii
-                scaled_points.append(self.environment.height/2*scale - points[i+1]*scale)
+                scaled_points.append(self.environment.height/2*scale - (points[i+1]-2)*scale)
 
         return scaled_points
 
@@ -182,13 +182,13 @@ class E160_graphics:
         
         for i in range(robot.PF.numParticles):
             self.canvas.delete(self.particles_vec[i])
-            self.particles_vec[i] = self.draw_arrow(robot.PF.particles[i], 0.05)
+            self.particles_vec[i] = self.draw_arrow(robot.PF.particles[i], 0.1)
 
         for i in range(robot.PF.numParticles):
             pf_point = [robot.PF.particles[i].x, robot.PF.particles[i].y]
             point = self.scale_points(pf_point, self.scale)
             self.canvas.delete(self.particles_dot[i]) 
-            self.particles_dot[i] = self.canvas.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill =  'red')
+            self.particles_dot[i] = self.canvas.create_oval(point[0] - 4, point[1] - 4, point[0] + 4, point[1] + 4, fill =  'red')
 
         # add estimated and desired position arrows
         self.update_arrow(robot.state_des, "des_arrow", 0.25)
