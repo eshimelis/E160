@@ -36,6 +36,8 @@ class E160_PF:
             self.odom_sigma = 0.3
             self.sampling_threshold = 0.4
 
+        self.delta_rl_sigma = 0.05
+
         self.particle_weight_sum = 0
 
         # define the sensor orientations
