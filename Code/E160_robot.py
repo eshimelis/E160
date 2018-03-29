@@ -117,6 +117,7 @@ class E160_robot:
                      E160_state(3, 0.71, 0), E160_state(3, 0.71, -math.pi),
                      E160_state(0.875, 0.71, -math.pi), E160_state(0.875, 0.71, math.pi/2),
                      E160_state(1.75/2,3, math.pi/2), E160_state(0.875, 0.71, -math.pi)]
+                     
         # self.path = [E160_state(0.25, -0.25, 0), E160_state(0.25, -0.25, math.pi/2),
         #             E160_state(0.25, 0.25, math.pi/2), E160_state(0.25, 0.25, math.pi),
         #             E160_state(-0.75, 0.25, math.pi), E160_state(-0.75, 0.25, 0),
