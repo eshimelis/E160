@@ -1,4 +1,4 @@
-from E160_robot import *
+ sfrom E160_robot import *
 from E160_state import *
 from E160_wall import *
 import serial
@@ -58,23 +58,46 @@ class E160_environment:
         # self.walls.append(E160_wall([-1, -1+48*self.INtoCM, 1, -1+48*self.INtoCM]))
 
         ## Parsons corner map [x1, y1, x2, y2] (Next to Lab/Room 2391)
-        wall1 = [0, 0, 0, 4]
+        wall1a = [0, 0, 0, 0.94]
+        wall1b = [0, 1.85, 0, 4]
+
+        door1a = [-0.12, 0.94, -0.12, 1.85]
+        door1b = [-0.12, 0.94, 0, 0.94]
+        door1c = [-0.12, 1.85, 0, 1.85]
+
         wall2 = [0, 0, 4, 0]
         wall3 = [1.75, 1.8, 1.75, 4]
         wall4 = [1.75, 1.8, 1.75+0.87, 1.8]
         wall5 = [1.75+0.87, 1.8, 1.75+0.87, 1.8-0.38]
         wall6 = [1.75+0.87, 1.8-0.38, 4, 1.8-0.38]
 
-        self.walls.append(E160_wall(wall1))
+        self.walls.append(E160_wall(wall1a))
+        self.walls.append(E160_wall(wall1b))
         self.walls.append(E160_wall(wall2))
         self.walls.append(E160_wall(wall3))
         self.walls.append(E160_wall(wall4))
         self.walls.append(E160_wall(wall5))
         self.walls.append(E160_wall(wall6))
 
+        self.walls.append(E160_wall(door1a))
+        self.walls.append(E160_wall(door1b))
+        self.walls.append(E160_wall(door1c))
+        
+        # door 1 
+        # self.walls.append(E160_wall(wall7))
+        # self.walls.append(E160_wall(wall8))
+
+        # 94, 185
+
         # create vars for hardware vs simulation
         self.robot_mode = "SIMULATION MODE"#"SIMULATION MODE" or "HARDWARE MODE"
         self.control_mode = "MANUAL CONTROL MODE"
+
+        if self.robot_mode == "SIMULATION MODE":
+            endcap1 = [0, 4, 1.75, 4]
+            endcap2 = [4, 0, 4, 1.8-0.38]
+            self.walls.append(E160_wall(endcap1))
+            self.walls.append(E160_wall(endcap2))
 
         # setup xbee communication
         if (self.robot_mode == "HARDWARE MODE"):

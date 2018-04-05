@@ -3,6 +3,7 @@ import E160_state
 from tkinter import *
 from E160_robot import *
 from PIL import Image, ImageTk
+import util
 
 class E160_graphics:
 
@@ -109,6 +110,10 @@ class E160_graphics:
         self.arrow_odo = self.canvas.create_line(0, 0, 0, 0, tags=("odo_arrow",), arrow="last", fill="steel blue", width=4)
         self.arrow_est = self.canvas.create_line(0, 0, 0, 0, tags=("est_arrow",), arrow="last", fill="chartreuse2", width=4)
 
+        # for testing
+        # self.leftSensor = self.canvas.create_line(0, 0, 0, 0, tags=("left_sensor",), arrow="last", fill="red", width=4)
+        # self.rightSensor = self.canvas.create_line(0, 0, 0, 0, tags=("right_sensor",), arrow="last", fill="blue", width=4)
+
         # self.canvas.bind("<ButtonPress-1>", self.on_button_press)
         # self.canvas.bind("<B1-Motion>", self.on_move_press)
         # self.canvas.bind("<ButtonRelease-1>", self.on_button_release)
@@ -174,6 +179,14 @@ class E160_graphics:
         robot_points = self.scale_points([robot.state_draw.x, robot.state_draw.y], self.scale)
         # self.canvas.coords(robot.image, *robot_points)
 
+        # leftSensorHeadingDisp = math.pi/2
+        # rightSensorHeadingDisp  = -math.pi/2
+
+        # leftSensor = E160_state(robot.state_draw.x, robot.state_draw.y, robot.state_draw.theta+leftSensorHeadingDisp)
+        # rightSensor = E160_state(robot.state_draw.x, robot.state_draw.y, robot.state_draw.theta+rightSensorHeadingDisp)
+
+        # self.update_arrow(leftSensor, 'left_sensor', 0.25)
+        # self.update_arrow(rightSensor, 'right_sensor', 0.25)
 
         # self.update_point(robot.WallPoint, "front_wall_sensor")
         # self.front_wall_sensor = self.canvas.create_oval(0,0,0,0, fill ='black', tags=("front_wall_sensor"))
@@ -368,14 +381,14 @@ class E160_graphics:
 
     def update_sensor_readings(self, distance):
         # update reading on gui
-        outputText = "Front: " + str(distance[0]) + "\nLeft: " + str(distance[1]) + "\nRight: " + str(distance[2])
+        outputText = "Front: " + str(distance[0]) + "\nRight: " + str(distance[1]) + "\nLeft: " + str(distance[2])
         self.distance_measurements.config(text = outputText)
 
     def update_labels(self):
         
         self.range_sensor_var_1.set("Front Range (m):  " + str(self.environment.robots[0].range_measurements[0]))
-        self.range_sensor_var_2.set("Left Range (m):  " + str(self.environment.robots[0].range_measurements[1]))
-        self.range_sensor_var_3.set("Right Range (m):  " + str(self.environment.robots[0].range_measurements[2]))
+        self.range_sensor_var_2.set("Right Range (m):  " + str(self.environment.robots[0].range_measurements[1]))
+        self.range_sensor_var_3.set("Left Range (m):  " + str(self.environment.robots[0].range_measurements[2]))
                 
         self.encoder_sensor_var_0.set("Encoder 0 (m):  " + str(self.environment.robots[0].encoder_measurements[0]))
         self.encoder_sensor_var_1.set("Encoder 1 (m):  " + str(self.environment.robots[0].encoder_measurements[1]))

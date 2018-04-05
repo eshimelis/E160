@@ -12,7 +12,7 @@ class E160_PF:
     def __init__(self, environment, robotWidth, wheel_radius, encoder_resolution):
         self.particles = []
         self.environment = environment
-        self.numParticles = 200
+        self.numParticles = 800
         self.numRandParticles = 0
         
         # maybe should just pass in a robot class?
@@ -20,25 +20,27 @@ class E160_PF:
         self.radius = robotWidth/2
         self.wheel_radius = wheel_radius
         self.encoder_resolution = encoder_resolution
-        self.FAR_READING = 8
+        self.FAR_READING = 3
         
         # PF parameters
         if environment.robot_mode == "SIMULATION MODE":
-            self.IR_sigma = 0.15 # Range finder s.d
+            self.IR_sigma = 0.1 # Range finder s.d
+            self.odom_sigma = 0.2
+            self.sampling_threshold = 0.6
             self.odom_xy_sigma = 0.03  # odometry standard deviation, meters
             self.odom_heading_sigma = 0.03 # odometry heading s.d
-            self.odom_sigma = 0.4
-            self.sampling_threshold = 0.4
+            
         else:
-            self.IR_sigma = 0.5 # Range finder s.d
+            self.IR_sigma = 0.3 # Range finder s.d
+            self.odom_sigma = 0.2
+            self.sampling_threshold = 0.5
             self.odom_xy_sigma = 0.03  # odometry standard deviation, meters
             self.odom_heading_sigma = 0.03 # odometry heading s.d
-            self.odom_sigma = 0.3
-            self.sampling_threshold = 0.4
 
-        self.delta_rl_sigma = 0.05
-
+        # for particle weight normalization
         self.particle_weight_sum = 0
+
+        self.start = True
 
         # define the sensor orientations
         self.sensor_orientation = [0, -math.pi/2, math.pi/2] # orientations of the sensors on robot
@@ -64,9 +66,9 @@ class E160_PF:
                 None'''
         self.particles = []
         for i in range(0, self.numParticles):
-            # self.SetRandomStartPos(i)
-            startPos = E160_state(0.975,3.095,-math.pi/2)
-            self.SetKnownStartPos(i, startPos)
+            self.SetRandomStartPos(i)
+            # startPos = E160_state(0.4375,3.1,-math.pi/2)
+            # self.SetKnownStartPos(i, startPos)
             
     def SetRandomStartPos(self, i):
         xPos = random.uniform(self.map_minX, self.map_maxX)
@@ -85,6 +87,13 @@ class E160_PF:
             Return:
                 None'''
         print(sensor_readings)
+
+        # prevent sudden simulation jumps
+        if self.start:
+                self.last_encoder_measurements = encoder_measurements
+                self.start = False
+
+        # encoder difference
         encoder_delta_left = encoder_measurements[0] - self.last_encoder_measurements[0]
         encoder_delta_right = encoder_measurements[1] - self.last_encoder_measurements[1]
         
@@ -130,7 +139,7 @@ class E160_PF:
             print("Resampling")
             # self.Resample()
             self.ResampleLowVar()
-    
+                
         return self.GetEstimatedPos()
 
     def LocalizeEstWithParticleFilter(self, state_odo, delta_s, delta_theta, sensor_readings):
@@ -203,10 +212,12 @@ class E160_PF:
         # weight = 1.0
 
         for i in range(len(self.sensor_orientation)):
+
             z = min(self.FindMinWallDistance(particle, walls, self.sensor_orientation[i]), self.FAR_READING)
             zexp = min(sensor_readings[i], self.FAR_READING)
 
-            eta = 0.5
+            # eta = 0.5
+            eta = 0.00118
             lam = 0.1
 
             # measurement noise model
@@ -307,15 +318,6 @@ class E160_PF:
             totalWeight += self.particles[i].weight
 
         for i in range(self.numParticles):
-            # TODO: weight each value by the particle weight 
-            # (i.e higher particles contribute more to the state estimate)
-            weight = self.particles[i].weight
-
-            # xSum += self.particles[i].x * (1.0/self.numParticles)
-            # ySum += self.particles[i].y * (1.0/self.numParticles)
-            # sinSum += math.sin(self.particles[i].theta) * (1.0/self.numParticles)
-            # cosSum += math.cos(self.particles[i].theta) * (1.0/self.numParticles)
-
             xSum += self.particles[i].x * (weight/totalWeight)
             ySum += self.particles[i].y * (weight/totalWeight)
             sinSum += math.sin(self.particles[i].theta) * (weight/totalWeight)
@@ -323,7 +325,6 @@ class E160_PF:
 
         self.state.set_state(xSum, ySum, math.atan2(sinSum, cosSum))
         return self.state
-
 
     def FindMinWallDistance(self, particle, walls, sensorT):
         ''' Given a particle position, walls, and a sensor, find 
@@ -346,7 +347,6 @@ class E160_PF:
         # print(minDist)
         return minDist
     
-
     def FindWallDistance(self, particle, wall, sensorT):
         ''' Given a particle position, a wall, and a sensor, find distance to the wall
             Args:
@@ -361,7 +361,7 @@ class E160_PF:
         point2 = point2 - point1 # direction vector from point 1
 
         bot = util.Vec2(particle.x, particle.y) # bot vector
-        heading = util.Vec2(math.cos(particle.theta+sensorT), math.sin(particle.theta+sensorT)) # heading vector
+        heading = util.Vec2(math.cos(util.angle_wrap(particle.theta+sensorT)), math.sin(util.angle_wrap(particle.theta+sensorT))) # heading vector
 
         # intersection exists if
         # bot + v*heading = point1 + u*point2Dir
