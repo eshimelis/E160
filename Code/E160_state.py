@@ -31,4 +31,5 @@ class E160_state:
         return E160_state(self.x, self.y, self.theta)
     
     def toVec(self):
-        return np.transpose(np.array([self.x, self.y, self.theta]))
+        array = np.array([[self.x], [self.y], [self.theta]])
+        return array

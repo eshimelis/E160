@@ -68,8 +68,8 @@ class E160_UKF:
             self.state_prev = E160_state()
             self.state_prev.set_state(0,0,0)
         else: 
-            self.state = initialState
-            self.state_prev = initialState
+            self.state = initialState.copy()
+            self.state_prev = initialState.copy()
 
         # TODO: change this later
         self.map_maxX = 4.0
@@ -87,17 +87,20 @@ class E160_UKF:
         # add mean to set
         meanWeight = self.lam/(self.n + self.lam)
         covWeight = meanWeight + (1-self.alpha**2 + self.beta)
+
         X.append(self.SigmaPoint(mean.x, mean.y, mean.theta, meanWeight, covWeight))
 
         # compute square root of covariance matrix
         rootP = sp.linalg.sqrtm(covariance)
         gamma = math.sqrt(self.n + self.lam)
         
-        # print(rootP)
+        # print("Sigma Root: ", rootP)
         # print(np.matmul(rootP,rootP))
 
         # create mean vector
         xVec = mean.toVec()
+
+        # print("\nXVec: ", xVec, "\n")
 
         # intialize remaining sigma points
 
@@ -109,9 +112,18 @@ class E160_UKF:
             # create and append both positive and negative sigma points
             sigmaPointA = xVec + gamma*rootP[:, i]
             sigmaPointB = xVec - gamma*rootP[:, i]
+            
+            # print("SigA: ", sigmaPointA)
+            # print("SigB: ", sigmaPointB)
 
-            X.append(self.SigmaPoint(sigmaPointA[0], sigmaPointA[1], sigmaPointA[2], meanWeight, covWeight))
-            X.append(self.SigmaPoint(sigmaPointB[0], sigmaPointB[1], sigmaPointB[2], meanWeight, covWeight))
+            spA = self.SigmaPoint(sigmaPointA[0,0], sigmaPointA[1,0], sigmaPointA[2,0], meanWeight, covWeight)
+            spB = self.SigmaPoint(sigmaPointB[0,0], sigmaPointB[1,0], sigmaPointB[2,0], meanWeight, covWeight)
+
+            # print("SigPointA: ", spA)
+            # print("SigPointB: ", spB)
+            
+            X.append(spA)
+            X.append(spB)
 
         return X
 
@@ -124,17 +136,13 @@ class E160_UKF:
                 nothing'''
 
         X = []
-
-        print(len(X_prev))
         for i in range(self.numSigPoints):
-            print(i)
             state = X_prev[i]
 
             delta_x = delta_s * math.cos(state.theta + delta_theta/2)
             delta_y = delta_s * math.sin(state.theta + delta_theta/2)
 
             # minus because robot is backwards
-            print(X_prev[i])
             X.append(self.SigmaPoint(state.x - delta_x, state.y - delta_y, util.angle_wrap(state.theta + delta_theta), state.mWeight, state.cWeight))
 
         return X
@@ -148,51 +156,70 @@ class E160_UKF:
             Return:
                 None'''
 
+        #------------------------------------------------------------------
         ## [2] generate set of sigma points
         X_prev = self.GenerateSigmaPoints(self.state, self.covariance)
 
-        #------------------------------------------------------------------
+        # print("\nX_prev: ", X_prev)
+        # print("\n")
 
+        #------------------------------------------------------------------
         ## [3] propagate set of sigma points
-        Xbar = self.Propagate(X_prev, delta_s, delta_theta)   
+        Xbar_star = self.Propagate(X_prev, delta_s, delta_theta) 
+
+        # print("\nX_bar_star: ", Xbar_star)
+        # print("\n")  
 
         #------------------------------------------------------------------
-
         ## [4] calculate mu bar
         muBarVec = np.zeros((self.n, 1))
         for i in range(self.numSigPoints):
-            print("object: ", Xbar[i])
-            print("Weight: ", Xbar[i].mWeight)
-            print("Vector: ", Xbar[i].toVec())
-            muBarVec += Xbar[i].mWeight * Xbar[i].toVec()
+            muBarVec += Xbar_star[i].mWeight * Xbar_star[i].toVec()
 
         #------------------------------------------------------------------
-
         ## [5] calculate sigma bar
         sigmaBar = np.zeros((self.n, self.n))
         for i in range(self.numSigPoints):
-            # sigmaBar += Xbar[i].cWeight * (Xbar[i] - muBar) * np.transpose(Xbar[i] - muBar) + RT  # not sure what the RT matrix is
-            sigmaBar += Xbar[i].cWeight * np.matmul((Xbar[i].toVec() - muBarVec), np.transpose(Xbar[i].toVec() - muBarVec))
+            # sigmaBar += Xbar_star[i].cWeight * (Xbar_star[i] - muBar) * np.transpose(Xbar_star[i] - muBar) + RT  # not sure what the RT matrix is
+            sigmaBar += X_prev[i].cWeight * np.matmul((Xbar_star[i].toVec() - muBarVec), np.transpose(Xbar_star[i].toVec() - muBarVec))
+
+        # print("\nSigma Bar: ", sigmaBar)
+        # print("Sigma Bar Shape: ", sigmaBar.shape)
 
         #------------------------------------------------------------------
-
         ## [6] new sigma points
 
+        # print("\n\nmuBarVecr: ", muBarVec)
+        # print("First element: ", muBarVec[0,0])
+        # print("Second element: ", muBarVec[1,0])
+        # print("Third element: ", muBarVec[2,0])
+        # print("\n\n")  
+
         # convert mubarVec to a sigma point
-        muBar = self.SigmaPoint(muBarVec[0], muBarVec[1], muBarVec[2], X_prev[0].mWeight, X_prev[0].cWeight)
+        muBar = self.SigmaPoint(muBarVec[0,0], muBarVec[1,0], muBarVec[2,0], X_prev[0].mWeight, X_prev[0].cWeight)
+        Xbar = self.GenerateSigmaPoints(muBar, sigmaBar)
 
+        # print("\n\n muBar: ", muBar)
+        # print("\n\n")
 
+        # print("XBar first element: ", Xbar[0])
+        # print("XBar second element: ", Xbar[1])
+        # print("XBar third element: ", Xbar[2])
+        # print("\n")
         #------------------------------------------------------------------
-
         ## [7] compute expected measurements (Z_t)
+        Z = self.ComputeExpSensor(Xbar)
+
+        # print(Z)
+
 
         #------------------------------------------------------------------
-
         ## [8] compute average measurement (z_t)
 
-        #------------------------------------------------------------------
 
-        ##
+        #------------------------------------------------------------------
+        ## [9] 
+
         return self.state
         
     def CalculateWeight(self, sensor_readings, walls, particle):
@@ -255,7 +282,7 @@ class E160_UKF:
         for i in range(self.numSigPoints):
             totalWeight += self.sigmaPoints[i].mWeight
 
-        print("Total Weight: ", totalWeight)
+        # print("Total Weight: ", totalWeight)
 
         for i in range(self.numSigPoints):
             weight = self.sigmaPoints[i].mWeight
@@ -267,17 +294,27 @@ class E160_UKF:
         self.state.set_state(xSum, ySum, math.atan2(sinSum, cosSum))
         return self.state
 
-    def Updatecovariance(self):
-        ''' Calculate the mean of the sigma points and return it 
-            Args:
-                None
-            Return:
-                None'''
-       
-        for i in range(self.numSigPoints):
-            self.covariance *= self.sigmaPoints[i].cWeight
+    def ComputeExpSensor(self, X):
 
-    def FindMinWallDistance(self, particle, walls, sensorT):
+        Z = np.zeros((len(self.sensor_orientation), self.numSigPoints))
+        
+        # compute measurement vector for each sigma point
+        for i in range(self.numSigPoints):
+            sp = X[i]
+
+            z = np.zeros((len(self.sensor_orientation), 1))
+            
+            # find expected wall distance for each sensor orientation
+            for i in range(len(self.sensor_orientation)):
+                z[i] = self.FindMinWallDistance(sp, self.walls, self.sensor_orientation[i])
+            
+            # update column in matrix
+            Z[:, i] = z[:, 0]
+
+        return Z
+
+
+    def FindMinWallDistance(self, sigmaPoint, walls, sensorT):
         ''' Given a particle position, walls, and a sensor, find 
             shortest distance to the wall
             Args:
@@ -290,12 +327,11 @@ class E160_UKF:
         minDist = float('inf')
         
         for wall in walls:
-            wallDist = self.FindWallDistance(particle, wall.wall_points, sensorT)
+            wallDist = self.FindWallDistance(sigmaPoint, wall.wall_points, sensorT)
             if wallDist == None:
                 minDist = min(minDist, self.FAR_READING)
             else: minDist = min(minDist, wallDist)
             
-        # print(minDist)
         return minDist
     
     def FindWallDistance(self, particle, wall, sensorT):
@@ -351,11 +387,10 @@ class E160_UKF:
             self.n = 3  # dimension of state space
 
         def __repr__(self):
-            return "[" + str(self.x) + ", " + str(self.y) + ", " + str(self.theta) + ", " + str(self.mWeight) + ", " + str(self.cWeight) + "]"
+            return "[" + str(self.x) + ", " + str(self.y) + ", " + str(self.theta) + "]"
 
         def toVec(self):
-            array = np.array([self.x, self.y, self.theta])
-            array.shape = (self.n, 1)
+            array = np.array([[self.x], [self.y], [self.theta]])
             return array
         
         def set_state(self, x, y, theta):
