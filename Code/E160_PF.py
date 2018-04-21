@@ -12,7 +12,7 @@ class E160_PF:
     def __init__(self, environment, robotWidth, wheel_radius, encoder_resolution):
         self.particles = []
         self.environment = environment
-        self.numParticles = 800
+        self.numParticles = 100
         self.numRandParticles = 0
         
         # maybe should just pass in a robot class?
@@ -66,9 +66,9 @@ class E160_PF:
                 None'''
         self.particles = []
         for i in range(0, self.numParticles):
-            self.SetRandomStartPos(i)
-            # startPos = E160_state(0.4375,3.1,-math.pi/2)
-            # self.SetKnownStartPos(i, startPos)
+            # self.SetRandomStartPos(i)
+            startPos = E160_state(0.4375,3.1,-math.pi/2)
+            self.SetKnownStartPos(i, startPos)
             
     def SetRandomStartPos(self, i):
         xPos = random.uniform(self.map_minX, self.map_maxX)
@@ -318,6 +318,7 @@ class E160_PF:
             totalWeight += self.particles[i].weight
 
         for i in range(self.numParticles):
+            weight = self.particles[i].weight
             xSum += self.particles[i].x * (weight/totalWeight)
             ySum += self.particles[i].y * (weight/totalWeight)
             sinSum += math.sin(self.particles[i].theta) * (weight/totalWeight)

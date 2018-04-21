@@ -1,5 +1,6 @@
 from E160_state import *
 from E160_PF import *
+from E160_UKF import *
 
 import util
 import math
@@ -15,6 +16,9 @@ class E160_robot:
         # estimated state
         self.state_est = E160_state()
         self.state_est.set_state(0,0,0)
+
+        self.state_est_prev = E160_state()
+        self.state_est_prev.set_state(0,0,0)
         
         # desired state
         self.state_des = E160_state()
@@ -31,6 +35,10 @@ class E160_robot:
         self.state_odo.set_state(0.875/2,3.1,-math.pi/2) # real position for simulation
         # self.state_odo.set_state(0,0,0) # real position for simulation
 
+        # dimension of robot state space
+        self.DIM = 3
+
+        # delete?
         self.previous_state_error = []
 
         self.R = 0
@@ -96,10 +104,10 @@ class E160_robot:
         if self.environment.robot_mode == "SIMULATION MODE":
             #simulation gains
             self.Kpho = 1.4#1.0
-            self.Kalpha = 3.0#2.0
+            self.Kalpha = 1.5#2.5
             self.Kbeta = -1.2#-0.5
             self.max_velocity = 0.05
-            self.max_ang_velocity = 0.8
+            self.max_ang_velocity = 0.5
         else:
             # hardware gains
             self.Kpho = 1.0#1.0
@@ -158,7 +166,10 @@ class E160_robot:
         #              E160_state(0, 0, 1.57), E160_state(0, 0, -1.57), E160_state(0, 0, 0), 
         #              E160_state(0, 0, 3.14), E160_state(0, 0, 0), E160_state(0, 0, -3.14), E160_state(0, 0, 2), E160_state(0, 0, -2)]
 
+        # create filter
         self.PF = E160_PF(environment, self.width, self.wheel_radius, self.encoder_resolution)
+
+        self.UKF = E160_UKF(environment, self.DIM, self.width, self.wheel_radius, self.encoder_resolution, initialState = self.state_odo)
 
     def update(self, deltaT):
 
@@ -176,8 +187,16 @@ class E160_robot:
         # self.state_est = self.PF.LocalizeEstWithParticleFilter(self.state_odo, delta_s, delta_theta, self.range_measurements)
         
         # testing
-        self.state_est = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
-        
+        # self.state_est = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
+                
+        # ukf testing
+        delta_s_noisy = delta_s + np.random.normal(0, 0.005)  # add noise to measurements
+        delta_theta_noisy = delta_theta + np.random.normal(0, 0.1)  # add noise to measurements
+
+        self.state_est = self.UKF.LocalizeEstWithUKF(delta_s_noisy, delta_theta_noisy, self.range_measurements)
+
+        # print(self.state_draw) 
+
         # to output the true location for display purposes only. 
         self.state_draw = self.state_odo
 

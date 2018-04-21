@@ -1,4 +1,4 @@
- sfrom E160_robot import *
+from E160_robot import *
 from E160_state import *
 from E160_wall import *
 import serial

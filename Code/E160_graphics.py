@@ -123,9 +123,13 @@ class E160_graphics:
 
         # initilize particle representation
         self.particles_dot = [self.canvas.create_oval(0,0,0,0, fill ='black') for x in range(self.environment.robots[0].PF.numParticles)]
-
         # initilize particle representation
         self.particles_vec = [self.canvas.create_line(0, 0, 0, 0, arrow="last", fill="medium sea green", width=2) for x in range(self.environment.robots[0].PF.numParticles)]
+
+        # initilize sigma point representation
+        self.sigma_points_dot = [self.canvas.create_oval(0,0,0,0, fill ='black') for x in range(2*self.environment.robots[0].UKF.L + 1)]
+        # initilize sigma point representation
+        self.sigma_points_vec = [self.canvas.create_line(0, 0, 0, 0, arrow="last", fill="medium sea green", width=2) for x in range(2*self.environment.robots[0].UKF.L + 1)]
 
         # draw static environment
         for w in self.environment.walls:
@@ -207,6 +211,28 @@ class E160_graphics:
         self.update_arrow(robot.state_des, "des_arrow", 0.25)
         self.update_arrow(robot.state_draw, "odo_arrow", 0.25)
         self.update_arrow(robot.state_est, "est_arrow", 0.25)
+
+    def draw_sigma_points(self, robot):
+        
+        if robot.UKF.sigmaPoints != []:
+            for i in range(robot.UKF.numSigPoints):
+                self.canvas.delete(self.sigma_points_vec[i])
+                self.sigma_points_vec[i] = self.draw_arrow(robot.UKF.sigmaPoints[i], 0.1)
+
+            for i in range(robot.UKF.numSigPoints):
+                sp_point = [robot.UKF.sigmaPoints[i].x, robot.UKF.sigmaPoints[i].y]
+                point = self.scale_points(sp_point, self.scale)
+                self.canvas.delete(self.sigma_points_dot[i]) 
+                self.sigma_points_dot[i] = self.canvas.create_oval(point[0] - 4, point[1] - 4, point[0] + 4, point[1] + 4, fill =  'red')
+
+        # add estimated and desired position arrows
+        self.update_arrow(robot.state_des, "des_arrow", 0.25)
+        self.update_arrow(robot.state_draw, "odo_arrow", 0.25)
+        self.update_arrow(robot.state_est, "est_arrow", 0.25)
+
+        # print("\nEst State: ", robot.state_est)
+        # print("Odo State: ", robot.state_draw)
+        # print("Des State: ", robot.state_des)
         
     def update_point(self, pos, tag):
         if pos != None:
@@ -408,7 +434,9 @@ class E160_graphics:
             self.draw_robot(r)
                 
         # draw particles
-        self.draw_particles(self.environment.robots[0])
+        # self.draw_particles(self.environment.robots[0])
+        
+        self.draw_sigma_points(self.environment.robots[0])
 
         # draw sensors
 
