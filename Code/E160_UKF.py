@@ -13,15 +13,15 @@ class E160_UKF:
     def __init__(self, environment, spaceDim, robotWidth, wheelRadius, encoderResolution, initialState = None, covariance = None):
         self.sigmaPoints = []
         self.environment = environment
-        
+
         # ukf parameters
         self.n = spaceDim   # dimension of state space
         self.alpha = 0.1    # papers recommends 1e-3 (spread of sigma points)
-        self.beta = 2       #  
+        self.beta = 2       #
         self.kappa = 0      # usually set to 0 (secondary scaling parameter)
         self.lam = (self.alpha**2) * (self.n + self.kappa) - self.n
 
-        if covariance == None: 
+        if covariance == None:
             self.covariance = np.array([[0.4, 0, 0], [0, 0.4, 0], [0, 0, 1]])
         else:
             self.covariance = covariance
@@ -35,7 +35,7 @@ class E160_UKF:
         self.FAR_READING = 3
 
         self.DIM = spaceDim
-        
+
         # PF parameters
         if environment.robot_mode == "SIMULATION MODE":
             self.IR_sigma = 0.1 # Range finder s.d
@@ -43,7 +43,7 @@ class E160_UKF:
             self.sampling_threshold = 0.6
             self.odom_xy_sigma = 0.03  # odometry standard deviation, meters
             self.odom_heading_sigma = 0.03 # odometry heading s.d
-            
+
         else:
             self.IR_sigma = 0.3 # Range finder s.d
             self.odom_sigma = 0.2
@@ -61,13 +61,13 @@ class E160_UKF:
         self.walls = self.environment.walls
 
         # initialize the current state
-        if initialState == None: 
+        if initialState == None:
             self.state = E160_state()
             self.state.set_state(0,0,0)
 
             self.state_prev = E160_state()
             self.state_prev.set_state(0,0,0)
-        else: 
+        else:
             self.state = initialState
             self.state_prev = initialState
 
@@ -92,7 +92,7 @@ class E160_UKF:
         # compute square root of covariance matrix
         rootP = sp.linalg.sqrtm(covariance)
         gamma = math.sqrt(self.n + self.lam)
-        
+
         # print(rootP)
         # print(np.matmul(rootP,rootP))
 
@@ -105,7 +105,7 @@ class E160_UKF:
         covWeight = meanWeight
 
         for i in range(self.DIM):
-        
+
             # create and append both positive and negative sigma points
             sigmaPointA = xVec + gamma*rootP[:, i]
             sigmaPointB = xVec - gamma*rootP[:, i]
@@ -141,7 +141,7 @@ class E160_UKF:
 
     def LocalizeEstWithUKF(self, delta_s, delta_theta, sensor_readings):
         ''' Localize the robot with Unscented Kalman filters. Call everything
-            Args: 
+            Args:
                 delta_s (float): change in distance as calculated by odometry
                 delta_heading (float): change in heading as calcualted by odometry
                 sensor_readings([float, float, float]): sensor readings from range fingers
@@ -154,7 +154,7 @@ class E160_UKF:
         #------------------------------------------------------------------
 
         ## [3] propagate set of sigma points
-        Xbar = self.Propagate(X_prev, delta_s, delta_theta)   
+        Xbar = self.Propagate(X_prev, delta_s, delta_theta)
 
         #------------------------------------------------------------------
 
@@ -189,19 +189,47 @@ class E160_UKF:
         #------------------------------------------------------------------
 
         ## [8] compute average measurement (z_t)
+        zBarVec = np.zeros((self.n, 1))
+        for i in range(self.numSigPoints):
+            # print("object: ", Xbar[i])
+            # print("Weight: ", Xbar[i].mWeight)
+            # print("Vector: ", Xbar[i].toVec())
+            zBarVec += Xbar[i].mWeight * Zbar[i].toVec()
+        #------------------------------------------------------------------
+        ## [9] compute expected uncertainty (S_t)
+        s_t = np.zeros((self.n, self.n))
+        for i in range(self.numSigPoints):
+            # need to add Qt
+            s_t += Xbar[i].cWeight * np.matmul((Zbar[i].toVec() - zBarVec), np.transpose(Zbar[i].toVec() - zBarVec))
+        #------------------------------------------------------------------
+        ## [10] compute cross coveriance Sigma bar_x,z
+        sigmaBar_XZ = np.zeros((self.n, self.n))
+        for i in range(self.numSigPoints):
+            sigmaBar_XZ += Xbar[i].cWeight * np.matmul((Xbar[i].toVec() - muBarVec), np.transpose(Zbar[i].toVec() - zBarVec))
+        #------------------------------------------------------------------
+        ## [11] compute Kalman Gain (K_t)
+        K_t = np.zeros((self.n, self.n))
+        s_tInv = inv(s_t)
+        K_t = sigmaBar_XZ*s_tInv
+        #------------------------------------------------------------------
+        ## [12] update state estimation (mu)
+        mu = muBarVec + K_t*()
 
         #------------------------------------------------------------------
-
+        ## [13] update covariance estimation (sigma)
+        sigma = simgaBar-K_t*s_t*np.transpose(K_t)
+        #------------------------------------------------------------------
+        ##
         ##
         return self.state
-        
+
     def CalculateWeight(self, sensor_readings, walls, particle):
         '''Calculate the weight of a particular particle
             Args:
                 particle (E160_Particle): a given particle
                 sensor_readings ( [float, ...] ): readings from the IR sesnors
-                walls ([ [four doubles], ...] ): positions of the walls from environment, 
-                            represented as 4 doubles 
+                walls ([ [four doubles], ...] ): positions of the walls from environment,
+                            represented as 4 doubles
             return:
                 new weight of the particle (float) '''
 
@@ -240,12 +268,12 @@ class E160_UKF:
         return weight
 
     def UpdateEstimatedPos(self):
-        ''' Calculate the mean of the sigma points and return it 
+        ''' Calculate the mean of the sigma points and return it
             Args:
                 None
             Return:
                 None'''
-        
+
         xSum = 0
         ySum = 0
         sinSum = 0
@@ -268,45 +296,45 @@ class E160_UKF:
         return self.state
 
     def Updatecovariance(self):
-        ''' Calculate the mean of the sigma points and return it 
+        ''' Calculate the mean of the sigma points and return it
             Args:
                 None
             Return:
                 None'''
-       
+
         for i in range(self.numSigPoints):
             self.covariance *= self.sigmaPoints[i].cWeight
 
     def FindMinWallDistance(self, particle, walls, sensorT):
-        ''' Given a particle position, walls, and a sensor, find 
+        ''' Given a particle position, walls, and a sensor, find
             shortest distance to the wall
             Args:
-                particle (E160_Particle): a particle 
-                walls ([E160_wall, ...]): represents endpoint of the wall 
+                particle (E160_Particle): a particle
+                walls ([E160_wall, ...]): represents endpoint of the wall
                 sensorT: orientation of the sensor on the robot
             Return:
                 distance to the closest wall' (float)'''
-        
+
         minDist = float('inf')
-        
+
         for wall in walls:
             wallDist = self.FindWallDistance(particle, wall.wall_points, sensorT)
             if wallDist == None:
                 minDist = min(minDist, self.FAR_READING)
             else: minDist = min(minDist, wallDist)
-            
+
         # print(minDist)
         return minDist
-    
+
     def FindWallDistance(self, particle, wall, sensorT):
         ''' Given a particle position, a wall, and a sensor, find distance to the wall
             Args:
-                particle (E160_Particle): a particle 
-                wall ([float x4]): represents endpoint of the wall 
+                particle (E160_Particle): a particle
+                wall ([float x4]): represents endpoint of the wall
                 sensorT: orientation of the sensor on the robot
             Return:
                 distance to the closest wall (float)'''
-        
+
         point1 = util.Vec2(wall[0], wall[1])
         point2 = util.Vec2(wall[2], wall[3])
         point2 = point2 - point1 # direction vector from point 1
@@ -357,7 +385,7 @@ class E160_UKF:
             array = np.array([self.x, self.y, self.theta])
             array.shape = (self.n, 1)
             return array
-        
+
         def set_state(self, x, y, theta):
             self.x = x
             self.y = y
