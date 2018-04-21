@@ -127,9 +127,9 @@ class E160_graphics:
         self.particles_vec = [self.canvas.create_line(0, 0, 0, 0, arrow="last", fill="medium sea green", width=2) for x in range(self.environment.robots[0].PF.numParticles)]
 
         # initilize sigma point representation
-        self.sigma_points_dot = [self.canvas.create_oval(0,0,0,0, fill ='black') for x in range(2*self.environment.robots[0].UKF.L + 1)]
+        self.sigma_points_dot = [self.canvas.create_oval(0,0,0,0, fill ='black') for x in range(self.environment.robots[0].UKF.numSigPoints)]
         # initilize sigma point representation
-        self.sigma_points_vec = [self.canvas.create_line(0, 0, 0, 0, arrow="last", fill="medium sea green", width=2) for x in range(2*self.environment.robots[0].UKF.L + 1)]
+        self.sigma_points_vec = [self.canvas.create_line(0, 0, 0, 0, arrow="last", fill="medium sea green", width=2) for x in range(self.environment.robots[0].UKF.numSigPoints)]
 
         # draw static environment
         for w in self.environment.walls:

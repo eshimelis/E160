@@ -15,18 +15,18 @@ class E160_UKF:
         self.environment = environment
         
         # ukf parameters
-        self.L = spaceDim   # dimension of state space
+        self.n = spaceDim   # dimension of state space
         self.alpha = 0.1    # papers recommends 1e-3 (spread of sigma points)
         self.beta = 2       #  
         self.kappa = 0      # usually set to 0 (secondary scaling parameter)
-        self.lam = (self.alpha**2) * (self.L + self.kappa) - self.L
+        self.lam = (self.alpha**2) * (self.n + self.kappa) - self.n
 
         if covariance == None: 
             self.covariance = np.array([[0.4, 0, 0], [0, 0.4, 0], [0, 0, 1]])
         else:
             self.covariance = covariance
 
-        self.numSigPoints = 2*self.L + 1
+        self.numSigPoints = 2*self.n + 1
         # maybe should just pass in a robot class?
         self.robotWidth = robotWidth
         self.radius = robotWidth/2
@@ -82,16 +82,16 @@ class E160_UKF:
     def GenerateSigmaPoints(self, mean, covariance):
         ''' Initialize a set of sigma points about the mean '''
 
-        self.sigmaPoints = []
+        X = []
 
         # add mean to set
-        meanWeight = self.lam/(self.L + self.lam)
+        meanWeight = self.lam/(self.n + self.lam)
         covWeight = meanWeight + (1-self.alpha**2 + self.beta)
-        self.sigmaPoints.append(self.SigmaPoint(mean.x, mean.y, mean.theta, meanWeight, covWeight))
+        X.append(self.SigmaPoint(mean.x, mean.y, mean.theta, meanWeight, covWeight))
 
         # compute square root of covariance matrix
         rootP = sp.linalg.sqrtm(covariance)
-        scale = math.sqrt(self.L + self.lam)
+        gamma = math.sqrt(self.n + self.lam)
         
         # print(rootP)
         # print(np.matmul(rootP,rootP))
@@ -101,21 +101,21 @@ class E160_UKF:
 
         # intialize remaining sigma points
 
-        meanWeight = 1/(2*(self.L + self.lam))
+        meanWeight = 1/(2*(self.n + self.lam))
         covWeight = meanWeight
 
         for i in range(self.DIM):
         
-            sigmaPointA = xVec + scale*rootP[:, i]
-            
-            sigmaPointB = xVec - scale*rootP[:, i]
+            # create and append both positive and negative sigma points
+            sigmaPointA = xVec + gamma*rootP[:, i]
+            sigmaPointB = xVec - gamma*rootP[:, i]
 
-            self.sigmaPoints.append(self.SigmaPoint(sigmaPointA[0], sigmaPointA[1], sigmaPointA[2], meanWeight, covWeight))
-            self.sigmaPoints.append(self.SigmaPoint(sigmaPointB[0], sigmaPointB[1], sigmaPointB[2], meanWeight, covWeight))
+            X.append(self.SigmaPoint(sigmaPointA[0], sigmaPointA[1], sigmaPointA[2], meanWeight, covWeight))
+            X.append(self.SigmaPoint(sigmaPointB[0], sigmaPointB[1], sigmaPointB[2], meanWeight, covWeight))
 
-        return self.sigmaPoints
+        return X
 
-    def Propagate(self, delta_s, delta_theta, i):
+    def Propagate(self, X_prev, delta_s, delta_theta):
         '''Propagate all the particles from the last state with odometry readings
             Args:
                 delta_s (float): distance traveled based on odometry
@@ -123,13 +123,21 @@ class E160_UKF:
             return:
                 nothing'''
 
-        state = self.sigmaPoints[i]
+        X = []
 
-        delta_x = delta_s * math.cos(state.theta + delta_theta/2)
-        delta_y = delta_s * math.sin(state.theta + delta_theta/2)
+        print(len(X_prev))
+        for i in range(self.numSigPoints):
+            print(i)
+            state = X_prev[i]
 
-        # minus because robot is backwards
-        self.sigmaPoints[i].set_state(state.x - delta_x, state.y - delta_y, util.angle_wrap(state.theta + delta_theta))
+            delta_x = delta_s * math.cos(state.theta + delta_theta/2)
+            delta_y = delta_s * math.sin(state.theta + delta_theta/2)
+
+            # minus because robot is backwards
+            print(X_prev[i])
+            X.append(self.SigmaPoint(state.x - delta_x, state.y - delta_y, util.angle_wrap(state.theta + delta_theta), state.mWeight, state.cWeight))
+
+        return X
 
     def LocalizeEstWithUKF(self, delta_s, delta_theta, sensor_readings):
         ''' Localize the robot with Unscented Kalman filters. Call everything
@@ -140,21 +148,51 @@ class E160_UKF:
             Return:
                 None'''
 
-        print(sensor_readings)
+        ## [2] generate set of sigma points
+        X_prev = self.GenerateSigmaPoints(self.state, self.covariance)
 
-        # if self.start == True:
-        self.GenerateSigmaPoints(self.state, self.covariance)
-            # self.start = False
-            # print("hi")
+        #------------------------------------------------------------------
 
+        ## [3] propagate set of sigma points
+        Xbar = self.Propagate(X_prev, delta_s, delta_theta)   
+
+        #------------------------------------------------------------------
+
+        ## [4] calculate mu bar
+        muBarVec = np.zeros((self.n, 1))
         for i in range(self.numSigPoints):
-            self.Propagate(delta_s, delta_theta, i)    
+            print("object: ", Xbar[i])
+            print("Weight: ", Xbar[i].mWeight)
+            print("Vector: ", Xbar[i].toVec())
+            muBarVec += Xbar[i].mWeight * Xbar[i].toVec()
 
-        # keep track of previous state
-        self.state_prev = self.state
+        #------------------------------------------------------------------
 
-        self.state = self.UpdateEstimatedPos()
-        self.Updatecovariance        
+        ## [5] calculate sigma bar
+        sigmaBar = np.zeros((self.n, self.n))
+        for i in range(self.numSigPoints):
+            # sigmaBar += Xbar[i].cWeight * (Xbar[i] - muBar) * np.transpose(Xbar[i] - muBar) + RT  # not sure what the RT matrix is
+            sigmaBar += Xbar[i].cWeight * np.matmul((Xbar[i].toVec() - muBarVec), np.transpose(Xbar[i].toVec() - muBarVec))
+
+        #------------------------------------------------------------------
+
+        ## [6] new sigma points
+
+        # convert mubarVec to a sigma point
+        muBar = self.SigmaPoint(muBarVec[0], muBarVec[1], muBarVec[2], X_prev[0].mWeight, X_prev[0].cWeight)
+
+
+        #------------------------------------------------------------------
+
+        ## [7] compute expected measurements (Z_t)
+
+        #------------------------------------------------------------------
+
+        ## [8] compute average measurement (z_t)
+
+        #------------------------------------------------------------------
+
+        ##
         return self.state
         
     def CalculateWeight(self, sensor_readings, walls, particle):
@@ -310,11 +348,15 @@ class E160_UKF:
             self.mWeight = meanWeight
             self.cWeight = covarianceWeight
 
+            self.n = 3  # dimension of state space
+
         def __repr__(self):
-            return "[" + str(self.x) + ", " + str(self.y) + ", " + str(self.theta) + ", " + str(self.weight) + "]"
+            return "[" + str(self.x) + ", " + str(self.y) + ", " + str(self.theta) + ", " + str(self.mWeight) + ", " + str(self.cWeight) + "]"
 
         def toVec(self):
-            return np.transpose(np.array([self.x, self.y, self.theta]))
+            array = np.array([self.x, self.y, self.theta])
+            array.shape = (self.n, 1)
+            return array
         
         def set_state(self, x, y, theta):
             self.x = x

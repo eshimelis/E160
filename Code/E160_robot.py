@@ -169,7 +169,7 @@ class E160_robot:
         # create filter
         self.PF = E160_PF(environment, self.width, self.wheel_radius, self.encoder_resolution)
 
-        self.UKF = E160_UKF(environment, self.DIM, self.width, self.wheel_radius, self.encoder_resolution, initialState = self.state_odo)
+        self.UKF = E160_UKF(environment, self.DIM, self.width, self.wheel_radius, self.encoder_resolution, initialState = self.state_odo.copy())
 
     def update(self, deltaT):
 
@@ -190,8 +190,8 @@ class E160_robot:
         # self.state_est = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
                 
         # ukf testing
-        delta_s_noisy = delta_s + np.random.normal(0, 0.005)  # add noise to measurements
-        delta_theta_noisy = delta_theta + np.random.normal(0, 0.1)  # add noise to measurements
+        delta_s_noisy = delta_s + np.random.normal(0, 0.00)  # add noise to measurements
+        delta_theta_noisy = delta_theta + np.random.normal(0, 0.00)  # add noise to measurements
 
         self.state_est = self.UKF.LocalizeEstWithUKF(delta_s_noisy, delta_theta_noisy, self.range_measurements)
 
