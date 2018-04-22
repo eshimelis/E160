@@ -4,9 +4,9 @@ import numpy as np
 import copy
 import util
 from E160_state import *
+
 # from scipy.stats import norm
 import scipy as sp
-
 
 class E160_UKF:
 
@@ -16,17 +16,21 @@ class E160_UKF:
 
         # ukf parameters
         self.n = spaceDim   # dimension of state space
-        self.alpha = 0.1    # papers recommends 1e-3 (spread of sigma points)
+        self.alpha = 0.001    # papers recommends 1e-3 (spread of sigma points)
         self.beta = 2       #
         self.kappa = 0      # usually set to 0 (secondary scaling parameter)
         self.lam = (self.alpha**2) * (self.n + self.kappa) - self.n
 
+        self.R_t = np.array([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]])
+        self.Q_t = np.array([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]])
+
         if covariance == None:
-            self.covariance = np.array([[0.4, 0, 0], [0, 0.4, 0], [0, 0, 1]])
+            self.covariance = np.array([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]])
         else:
             self.covariance = covariance
 
         self.numSigPoints = 2*self.n + 1
+
         # maybe should just pass in a robot class?
         self.robotWidth = robotWidth
         self.radius = robotWidth/2
@@ -81,22 +85,30 @@ class E160_UKF:
 
     def GenerateSigmaPoints(self, mean, covariance):
         ''' Initialize a set of sigma points about the mean '''
-
+        
         X = []
-
+        
         # add mean to set
         meanWeight = self.lam/(self.n + self.lam)
         covWeight = meanWeight + (1-self.alpha**2 + self.beta)
+        # print("Mean Weight: ", meanWeight)
+        # print("Cov Weight: ", covWeight, "\n")
 
         X.append(self.SigmaPoint(mean.x, mean.y, mean.theta, meanWeight, covWeight))
 
         # compute square root of covariance matrix
-        # rootP = sp.linalg.sqrtm(covariance)
-        rootP = covariance
+        rootP = sp.linalg.sqrtm(covariance)
+        # rootP = covariance
         gamma = math.sqrt(self.n + self.lam)
         
-        # print("Sigma Root: ", rootP)
+        print("Sigma Root: ", rootP)
         # print(np.matmul(rootP,rootP))
+
+        #### Verify or Remove ####
+        rootP = np.absolute(rootP)
+        #### Verify or Remove ####
+
+        print("Sigma Root: ", rootP)
 
         # create mean vector
         xVec = mean.toVec()
@@ -109,7 +121,6 @@ class E160_UKF:
         covWeight = meanWeight
 
         for i in range(self.DIM):
-        
             # create and append both positive and negative sigma points
             sigmaPointA = xVec + gamma*rootP[:, i]
             sigmaPointB = xVec - gamma*rootP[:, i]
@@ -125,7 +136,6 @@ class E160_UKF:
             
             X.append(spA)
             X.append(spB)
-
         return X
 
     def Propagate(self, X_prev, delta_s, delta_theta):
@@ -157,11 +167,11 @@ class E160_UKF:
             Return:
                 None'''
 
+        print("Start Mu: ", self.state)
+        print("Start Cov: ", self.covariance)
+
         ## [2] generate set of sigma points
         X_prev = self.GenerateSigmaPoints(self.state, self.covariance)
-
-        # print("\nX_prev: ", X_prev)
-        # print("\n")
 
         #------------------------------------------------------------------
         ## [3] propagate set of sigma points
@@ -176,6 +186,7 @@ class E160_UKF:
         for i in range(self.numSigPoints):
             muBarVec += Xbar_star[i].mWeight * Xbar_star[i].toVec()
 
+        print("\nmuBarVec: ", muBarVec, "\n")
         #------------------------------------------------------------------
         ## [5] calculate sigma bar
         sigmaBar = np.zeros((self.n, self.n))
@@ -183,9 +194,10 @@ class E160_UKF:
             # sigmaBar += Xbar_star[i].cWeight * (Xbar_star[i] - muBar) * np.transpose(Xbar_star[i] - muBar) + RT  # not sure what the RT matrix is
             sigmaBar += X_prev[i].cWeight * np.matmul((Xbar_star[i].toVec() - muBarVec), np.transpose(Xbar_star[i].toVec() - muBarVec))
 
-        # print("\nSigma Bar: ", sigmaBar)
-        # print("Sigma Bar Shape: ", sigmaBar.shape)
+        sigmaBar += self.R_t # add additive noise
 
+        print("\nmuBar: ", muBarVec)
+        print("Sigma Bar: ", sigmaBar)
         #------------------------------------------------------------------
         ## [6] new sigma points
 
@@ -217,45 +229,48 @@ class E160_UKF:
         #------------------------------------------------------------------
         ## [8] compute average measurement (z_t)
         zBarVec = np.zeros((self.n, 1))
-
-        print("Zbar CVec: ", Zbar[:, i])
-        print("Zbar CVec Shape: ", Zbar[:, [i]].shape)
         for i in range(self.numSigPoints):
-            # print("object: ", Xbar[i])
-            # print("Weight: ", Xbar[i].mWeight)
-            # print("Vector: ", Xbar[i].toVec())
-            zBarVec += Xbar[i].mWeight * Zbar[:,[i]]
+            zBarVec += X_prev[i].mWeight * Zbar[:,[i]]
+
+        print("zBarVec: ", zBarVec)
+
         #------------------------------------------------------------------
         ## [9] compute expected uncertainty (S_t)
-        s_t = np.zeros((self.n, self.n))
+        s_t = np.zeros((len(self.sensor_orientation), len(self.sensor_orientation)))
         for i in range(self.numSigPoints):
-            # need to add Qt
-            s_t += Xbar[i].cWeight * np.matmul((Zbar[:,i] - zBarVec), np.transpose(Zbar[:,i] - zBarVec))
+            s_t += X_prev[i].cWeight * np.matmul((Zbar[:,[i]] - zBarVec), np.transpose(Zbar[:,[i]] - zBarVec))
+        s_t += self.Q_t # add additive sensor noise
+
         #------------------------------------------------------------------
         ## [10] compute cross coveriance Sigma bar_x,z
         sigmaBar_XZ = np.zeros((self.n, self.n))
         for i in range(self.numSigPoints):
-            sigmaBar_XZ += Xbar[i].cWeight * np.matmul((Xbar[i].toVec() - muBarVec), np.transpose(Zbar[:,[i]] - zBarVec))
+            sigmaBar_XZ += X_prev[i].cWeight * np.matmul((Xbar[i].toVec() - muBarVec), np.transpose(Zbar[:,[i]] - zBarVec))
+
         #------------------------------------------------------------------
         ## [11] compute Kalman Gain (K_t)
         K_t = np.zeros((self.n, self.n))
         s_tInv = np.linalg.inv(s_t)
         K_t = sigmaBar_XZ*s_tInv
+
         #------------------------------------------------------------------
         ## [12] update state estimation (mu)
-        
         # convert sensor readings to numpy array 
         z = np.array([[sensor_readings[0]], [sensor_readings[1]], [sensor_readings[2]]])
         mu = muBarVec + K_t*(z - zBarVec)
-
+        print("z: ", z)
 
         #------------------------------------------------------------------
         ## [13] update covariance estimation (sigma)
         sigma = sigmaBar-K_t*s_t*np.transpose(K_t)
         #------------------------------------------------------------------
         
-        state_est = E160_state(mu[0,0], mu[1,0], mu[2,0])
-        return state_est, sigmaBar
+        # update state and covariance
+        self.state.set_state(mu[0,0], mu[1,0], mu[2,0])
+        self.covariance = sigma
+
+        print("State: ", self.state, "\n")
+        return self.state
 
     def CalculateWeight(self, sensor_readings, walls, particle):
         '''Calculate the weight of a particular particle
@@ -301,33 +316,31 @@ class E160_UKF:
 
         return weight
 
-    def UpdateEstimatedPos(self):
-        ''' Calculate the mean of the sigma points and return it
-            Args:
-                None
-            Return:
-                None'''
+    # def UpdateEstimatedPos(self):
+    #     ''' Calculate the mean of the sigma points and return it
+    #         Args:
+    #             None
+    #         Return:
+    #             None'''
 
-        xSum = 0
-        ySum = 0
-        sinSum = 0
-        cosSum = 0
+    #     xSum = 0
+    #     ySum = 0
+    #     sinSum = 0
+    #     cosSum = 0
 
-        totalWeight = 0
-        for i in range(self.numSigPoints):
-            totalWeight += self.sigmaPoints[i].mWeight
+    #     totalWeight = 0
+    #     for i in range(self.numSigPoints):
+    #         totalWeight += self.sigmaPoints[i].mWeight
 
-        # print("Total Weight: ", totalWeight)
+    #     for i in range(self.numSigPoints):
+    #         weight = self.sigmaPoints[i].mWeight
+    #         xSum += self.sigmaPoints[i].x * (weight/totalWeight)
+    #         ySum += self.sigmaPoints[i].y * (weight/totalWeight)
+    #         sinSum += math.sin(self.sigmaPoints[i].theta) * (weight/totalWeight)
+    #         cosSum += math.cos(self.sigmaPoints[i].theta) * (weight/totalWeight)
 
-        for i in range(self.numSigPoints):
-            weight = self.sigmaPoints[i].mWeight
-            xSum += self.sigmaPoints[i].x * (weight/totalWeight)
-            ySum += self.sigmaPoints[i].y * (weight/totalWeight)
-            sinSum += math.sin(self.sigmaPoints[i].theta) * (weight/totalWeight)
-            cosSum += math.cos(self.sigmaPoints[i].theta) * (weight/totalWeight)
-
-        self.state.set_state(xSum, ySum, math.atan2(sinSum, cosSum))
-        return self.state
+    #     self.state.set_state(xSum, ySum, math.atan2(sinSum, cosSum))
+    #     return self.state
 
     def ComputeExpSensor(self, X):
 
@@ -336,15 +349,12 @@ class E160_UKF:
         # compute measurement vector for each sigma point
         for i in range(self.numSigPoints):
             sp = X[i]
-
             z = np.zeros((len(self.sensor_orientation), 1))
-            
+
             # find expected wall distance for each sensor orientation
-            for i in range(len(self.sensor_orientation)):
-                z[i] = self.FindMinWallDistance(sp, self.walls, self.sensor_orientation[i])
-            
-            # update column in matrix
-            Z[:, i] = z[:, 0]
+            for j in range(len(self.sensor_orientation)):
+                z[j,0] = self.FindMinWallDistance(sp, self.walls, self.sensor_orientation[j])
+            Z[:, [i]] = z
 
         return Z
 

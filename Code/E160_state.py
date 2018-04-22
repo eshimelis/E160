@@ -9,7 +9,7 @@ class E160_state:
         self.y = y
         self.theta = theta
         self.DIM = 3    # state space dimension
-        
+
     def set_state(self,x,y,theta):
         self.x = x
         self.y = y

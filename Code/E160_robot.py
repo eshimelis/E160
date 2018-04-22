@@ -195,7 +195,7 @@ class E160_robot:
 
         self.state_est = self.UKF.LocalizeEstWithUKF(delta_s_noisy, delta_theta_noisy, self.range_measurements)
 
-        # print(self.state_draw) 
+        print(self.state_est) 
 
         # to output the true location for display purposes only. 
         self.state_draw = self.state_odo
