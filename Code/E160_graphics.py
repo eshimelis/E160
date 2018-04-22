@@ -110,6 +110,8 @@ class E160_graphics:
         self.arrow_odo = self.canvas.create_line(0, 0, 0, 0, tags=("odo_arrow",), arrow="last", fill="steel blue", width=4)
         self.arrow_est = self.canvas.create_line(0, 0, 0, 0, tags=("est_arrow",), arrow="last", fill="chartreuse2", width=4)
 
+        self.conf_ellipse = self.canvas.create_oval(0, 0, 0, 0, tags=("conf_ellipse",), width=2, outline="OrangeRed4", fill="thistle1")
+
         # for testing
         # self.leftSensor = self.canvas.create_line(0, 0, 0, 0, tags=("left_sensor",), arrow="last", fill="red", width=4)
         # self.rightSensor = self.canvas.create_line(0, 0, 0, 0, tags=("right_sensor",), arrow="last", fill="blue", width=4)
@@ -181,6 +183,9 @@ class E160_graphics:
         robot.tkimage = ImageTk.PhotoImage(robot.robot_gif.rotate(180/3.14*robot.state_draw.theta))
         # robot.image = self.canvas.create_image(robot.state_draw.x, robot.state_draw.y, image=robot.tkimage)
         robot_points = self.scale_points([robot.state_draw.x, robot.state_draw.y], self.scale)
+
+        self.draw_confidence_ellipse("conf_ellipse", robot)
+
         # self.canvas.coords(robot.image, *robot_points)
 
         # leftSensorHeadingDisp = math.pi/2
@@ -233,7 +238,21 @@ class E160_graphics:
         # print("\nEst State: ", robot.state_est)
         # print("Odo State: ", robot.state_draw)
         # print("Des State: ", robot.state_des)
+    
+    def draw_confidence_ellipse(self, tag, robot):
         
+        x0 = robot.state_est.x + robot.UKF.covariance[0,0]
+        x1 = robot.state_est.x - robot.UKF.covariance[0,0]
+
+        y0 = robot.state_est.y + robot.UKF.covariance[1,1]
+        y1 = robot.state_est.y - robot.UKF.covariance[1,1]
+
+        points = [x0, y0, x1, y1]
+        [x0, y0, x1, y1] = self.scale_points(points, self.scale)
+
+        self.canvas.coords(tag, x0, y0, x1, y1)
+        self.canvas.tag_raise(tag)
+
     def update_point(self, pos, tag):
         if pos != None:
             # print(pos.x, ',', pos.y)

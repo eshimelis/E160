@@ -195,7 +195,7 @@ class E160_robot:
 
         self.state_est = self.UKF.LocalizeEstWithUKF(delta_s_noisy, delta_theta_noisy, self.range_measurements)
 
-        print(self.state_est) 
+        # print(self.state_est) 
 
         # to output the true location for display purposes only. 
         self.state_draw = self.state_odo
@@ -206,10 +206,8 @@ class E160_robot:
         # send the control measurements to the robot
         self.send_control(self.R, self.L, deltaT)
 
-
     def update_sensor_measurements(self, deltaT):
 
-        # send to actual robot !!!!!!!!! John
         if self.environment.robot_mode == "HARDWARE MODE":
             command = '$S @'
             self.environment.xbee.tx(dest_addr = self.address, data = command)
@@ -320,10 +318,10 @@ class E160_robot:
     def point_tracker_control(self):
 
         #### Delete after implementing PF ####
-        state_est = self.state_odo
+        # state_est = self.state_odo
         #### Delete after implementing PF ####
 
-        # state_est = self.state_est
+        state_est = self.state_est
 
         # calculate state error 
         self.state_error = self.state_des-state_est
