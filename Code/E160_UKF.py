@@ -167,8 +167,8 @@ class E160_UKF:
             Return:
                 None'''
 
-        print("Start Mu: ", self.state)
-        print("Start Cov: ", self.covariance)
+        # print("Start Mu: ", self.state)
+        # print("Start Cov: ", self.covariance)
 
         ## [2] generate set of sigma points
         X_prev = self.GenerateSigmaPoints(self.state, self.covariance)
@@ -186,7 +186,7 @@ class E160_UKF:
         for i in range(self.numSigPoints):
             muBarVec += Xbar_star[i].mWeight * Xbar_star[i].toVec()
 
-        print("\nmuBarVec: ", muBarVec, "\n")
+        # print("\nmuBarVec: ", muBarVec, "\n")
         #------------------------------------------------------------------
         ## [5] calculate sigma bar
         sigmaBar = np.zeros((self.n, self.n))
@@ -196,8 +196,8 @@ class E160_UKF:
 
         sigmaBar += self.R_t # add additive noise
 
-        print("\nmuBar: ", muBarVec)
-        print("Sigma Bar: ", sigmaBar)
+        # print("\nmuBar: ", muBarVec)
+        # print("Sigma Bar: ", sigmaBar)
         #------------------------------------------------------------------
         ## [6] new sigma points
 
@@ -222,8 +222,8 @@ class E160_UKF:
         ## [7] compute expected measurements (Z_t)
         Zbar = self.ComputeExpSensor(Xbar)
 
-        print("ZBar: ", Zbar)
-        print("Zbar shape: ", Zbar.shape)
+        # print("ZBar: ", Zbar)
+        # print("Zbar shape: ", Zbar.shape)
 
 
         #------------------------------------------------------------------
@@ -232,7 +232,7 @@ class E160_UKF:
         for i in range(self.numSigPoints):
             zBarVec += X_prev[i].mWeight * Zbar[:,[i]]
 
-        print("zBarVec: ", zBarVec)
+        # print("zBarVec: ", zBarVec)
 
         #------------------------------------------------------------------
         ## [9] compute expected uncertainty (S_t)
@@ -249,20 +249,25 @@ class E160_UKF:
 
         #------------------------------------------------------------------
         ## [11] compute Kalman Gain (K_t)
-        K_t = np.zeros((self.n, self.n))
+        # K_t = np.zeros((self.n, self.n))
         s_tInv = np.linalg.inv(s_t)
-        K_t = sigmaBar_XZ*s_tInv
+        K_t = np.matmul(sigmaBar_XZ, s_tInv)
 
+        # print("Inv: ",s_tInv)
+        # print("Normal: ",s_t)
         #------------------------------------------------------------------
         ## [12] update state estimation (mu)
         # convert sensor readings to numpy array 
         z = np.array([[sensor_readings[0]], [sensor_readings[1]], [sensor_readings[2]]])
-        mu = muBarVec + K_t*(z - zBarVec)
+        print("\nz: ", z)
+        print("zBarVec: ", z)
+        print("Innovation: ", np.matmul(K_t, (z - zBarVec)))
+        mu = muBarVec + np.matmul(K_t, (z - zBarVec))
         print("z: ", z)
 
         #------------------------------------------------------------------
         ## [13] update covariance estimation (sigma)
-        sigma = sigmaBar-K_t*s_t*np.transpose(K_t)
+        sigma = np.matmul(np.matmul(sigmaBar-K_t, s_t), np.transpose(K_t))
         #------------------------------------------------------------------
         
         # update state and covariance
