@@ -1,6 +1,7 @@
 from E160_state import *
 from E160_PF import *
 from E160_UKF import *
+from E160_AUKF import *
 
 import util
 import math
@@ -16,6 +17,9 @@ class E160_robot:
         # estimated state
         self.state_est = E160_state()
         self.state_est.set_state(0,0,0)
+
+        self.state_est_PF = self.state_est.copy()
+        self.state_est_UKF = self.state_est.copy()
 
         self.state_est_prev = E160_state()
         self.state_est_prev.set_state(0,0,0)
@@ -98,7 +102,7 @@ class E160_robot:
         self.last_simulated_encoder_R = 0
         self.last_simulated_encoder_L = 0
             
-        self.min_ptrack_dist_error = 0.03   # meters
+        self.min_ptrack_dist_error = 0.05   # meters
         self.min_ptrack_ang_error = 0.05    # radians
 
         if self.environment.robot_mode == "SIMULATION MODE":
@@ -108,14 +112,20 @@ class E160_robot:
             self.Kbeta = -1.2#-0.5
             self.max_velocity = 0.05
             self.max_ang_velocity = 0.5
+
+            self.min_ptrack_dist_error = 0.03   # meters
+            self.min_ptrack_ang_error = 0.05    # radians
+
         else:
             # hardware gains
             self.Kpho = 1.0#1.0
-            self.Kalpha = 2.8#2.0
-            self.Kbeta = -2.3#-2.5
+            self.Kalpha = 2.9#2.0
+            self.Kbeta = -2.5#-2.5
             self.max_velocity = 0.1
             self.max_ang_velocity = 0.8
-        
+
+            self.min_ptrack_dist_error = 0.05   # meters
+            self.min_ptrack_ang_error = 0.05    # radians
         
         self.point_tracked = True
         self.encoder_per_sec_to_rad_per_sec = 10
@@ -124,8 +134,8 @@ class E160_robot:
 
         self.path = [E160_state(0.4375, 0.355, -math.pi/2), E160_state(0.4375, 0.355, 0),
                      E160_state(3, 0.355, 0), E160_state(3, 0.355, math.pi/2), E160_state(3, 1.065, math.pi/2), E160_state(3, 1.065, math.pi),
-                     E160_state(1.3125, 1.065, math.pi), E160_state(1.3125, 1.065, math.pi/2), E160_state(1.3125, 3, math.pi/2), E160_state(1.3125, 3, math.pi),
-                     E160_state(0.4375, 3, math.pi), E160_state(0.4375, 3, -math.pi/2)]
+                     E160_state(1.3125, 1.065, math.pi), E160_state(1.3125, 1.065, math.pi/2), E160_state(1.3125, 3.1, math.pi/2), E160_state(1.3125, 3.1, math.pi),
+                     E160_state(0.4375, 3.1, math.pi), E160_state(0.4375, 3.1, -math.pi/2)]
 
         # self.path = [E160_state(0.875, 0.71, -math.pi/2), E160_state(0.875, 0.71, 0),
         #              E160_state(3, 0.71, 0), E160_state(3, 0.71, -math.pi),
@@ -166,10 +176,19 @@ class E160_robot:
         #              E160_state(0, 0, 1.57), E160_state(0, 0, -1.57), E160_state(0, 0, 0), 
         #              E160_state(0, 0, 3.14), E160_state(0, 0, 0), E160_state(0, 0, -3.14), E160_state(0, 0, 2), E160_state(0, 0, -2)]
 
+        state_offset = [0.6, -1, 0]
+        self.state_filter = E160_state()
+        self.state_filter.set_state(self.state_odo.x+state_offset[0], self.state_odo.y+state_offset[1], self.state_odo.theta+state_offset[2])
+        
         # create filter
-        self.PF = E160_PF(environment, self.width, self.wheel_radius, self.encoder_resolution)
+        self.PF = E160_PF(environment, self.width, self.wheel_radius, self.encoder_resolution, initialState = self.state_filter.copy())
+        self.UKF = E160_UKF(environment, self.DIM, self.width, self.wheel_radius, self.encoder_resolution, initialState = self.state_filter.copy())
+        self.AUKF = E160_AUKF(environment, self.DIM, self.width, self.wheel_radius, self.encoder_resolution, initialState = self.state_filter.copy())
 
-        self.UKF = E160_UKF(environment, self.DIM, self.width, self.wheel_radius, self.encoder_resolution, initialState = self.state_odo.copy())
+        # simluation noise parameters
+        self.s_std = 0.001
+        self.theta_std = 0.05
+        self.sensor_std = 0.05
 
     def update(self, deltaT):
 
@@ -177,25 +196,41 @@ class E160_robot:
         self.encoder_measurements, self.range_measurements = self.update_sensor_measurements(deltaT)
         [self.front_dist, self.right_dist, self.left_dist] = self.range_measurements
 
-       # update odometry
+        # update odometry
         delta_s, delta_theta = self.update_odometry(self.encoder_measurements)
+
+        # ukf testing
+        # delta_s_noisy = delta_s + np.random.normal(0, 0.000)  # add noise to measurements
+        # delta_theta_noisy = delta_theta + np.random.normal(0, 0.000)  # add noise to measurements
 
         # update simulated real position, find ground truth for simulation
         self.state_odo = self.localize(self.state_odo, delta_s, delta_theta, self.range_measurements)
 
+        # add encoder noise only to simulation
+        if self.environment.control_mode == "SIMULATION MODE":
+            delta_s += np.random.normal(0, self.s_std)
+            delta_theta += np.random.normal(0, self.theta_std)
+
+            front_noise = np.random.normal(0, self.sensor_std)
+            right_noise = np.random.normal(0, self.sensor_std)
+            left_noise = np.random.normal(0, self.sensor_std)
+            self.range_measurements[0] += front_noise
+            self.range_measurements[1] += right_noise
+            self.range_measurements[2] += left_noise
+
         # localize with particle filter
-        # self.state_est = self.PF.LocalizeEstWithParticleFilter(self.state_odo, delta_s, delta_theta, self.range_measurements)
+        # self.state_est_PF = self.PF.LocalizeEstWithParticleFilter(delta_s, delta_theta, self.range_measurements)
         
         # testing
-        # self.state_est = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
-                
-        # ukf testing
-        delta_s_noisy = delta_s + np.random.normal(0, 0.00)  # add noise to measurements
-        delta_theta_noisy = delta_theta + np.random.normal(0, 0.00)  # add noise to measurements
+        # self.state_est_PF = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
 
-        self.state_est = self.UKF.LocalizeEstWithUKF(delta_s_noisy, delta_theta_noisy, self.range_measurements)
+        self.state_est_UKF = self.UKF.LocalizeEstWithUKF(delta_s, delta_theta, self.range_measurements)
+
+        # augmented ukf testing
+        # self.state_est_AUKF = self.AUKF.LocalizeEstWithUKF(delta_s, delta_theta, self.range_measurements)
 
         # print(self.state_est) 
+        self.state_est = self.state_odo
 
         # to output the true location for display purposes only. 
         self.state_draw = self.state_odo
@@ -318,10 +353,10 @@ class E160_robot:
     def point_tracker_control(self):
 
         #### Delete after implementing PF ####
-        # state_est = self.state_odo
+        state_est = self.state_odo
         #### Delete after implementing PF ####
 
-        state_est = self.state_est
+        # state_est = self.state_est_UKF
 
         # calculate state error 
         self.state_error = self.state_des-state_est
@@ -435,9 +470,12 @@ class E160_robot:
             # with open(self.file_name, 'rb') as logfile:
             header = ['FDist', 'LDist', 'RDist', \
                      'XEst', 'YEst', 'ThetaEst', \
+                     'XEstPF', 'YEstPF', 'ThetaEstPF', \
+                     'XEstUKF', 'YEstUKF', 'ThetaEstUKF', \
                      'XOdo', 'YOdo', 'ThetaOdo', \
                      'XDes', 'YDes', 'ThetaDes', \
                      'XError', 'YError', 'ThetaError', \
+                     'SStd', 'ThetaStd', 'SensorStd', \
                      'SL', 'SR', 'RW', 'LW']
 
             csv_log.writerow(header)
@@ -449,9 +487,12 @@ class E160_robot:
             # with open(self.file_name, 'rb') as logfile:
             data = [self.front_dist, self.left_dist, self.right_dist, \
                     self.state_est.x, self.state_est.y, self.state_est.theta, \
+                    self.state_est_PF.x, self.state_est_PF.y, self.state_est_PF.theta, \
+                    self.state_est_UKF.x, self.state_est_UKF.y, self.state_est_UKF.theta, \
                     self.state_odo.x, self.state_odo.y, self.state_odo.theta, \
                     self.state_des.x, self.state_des.y, self.state_des.theta, \
                     self.state_error.x, self.state_error.y, self.state_error.theta, \
+                    self.s_std, self.theta_std, self.sensor_std, \
                     self.sl, self.sr, \
                     self.manual_control_right_motor, self.manual_control_left_motor]
             csv_log.writerow(data)

@@ -108,7 +108,8 @@ class E160_graphics:
         # desired and estimated state arrow
         self.arrow_des = self.canvas.create_line(0, 0, 0, 0, tags=("des_arrow",), arrow="last", fill="orange red", width=8)
         self.arrow_odo = self.canvas.create_line(0, 0, 0, 0, tags=("odo_arrow",), arrow="last", fill="steel blue", width=4)
-        self.arrow_est = self.canvas.create_line(0, 0, 0, 0, tags=("est_arrow",), arrow="last", fill="chartreuse2", width=4)
+        self.arrow_est_pf = self.canvas.create_line(0, 0, 0, 0, tags=("pf_est_arrow",), arrow="last", fill="purple4", width=4)
+        self.arrow_est_ukf = self.canvas.create_line(0, 0, 0, 0, tags=("ukf_est_arrow",), arrow="last", fill="tomato", width=4)
 
         self.conf_ellipse = self.canvas.create_oval(0, 0, 0, 0, tags=("conf_ellipse",), width=2, outline="OrangeRed4", fill="thistle1")
 
@@ -202,38 +203,38 @@ class E160_graphics:
 
     def draw_particles(self, robot):
         
-        for i in range(robot.PF.numParticles):
-            self.canvas.delete(self.particles_vec[i])
-            self.particles_vec[i] = self.draw_arrow(robot.PF.particles[i], 0.1)
+        # for i in range(robot.PF.numParticles):
+        #     self.canvas.delete(self.particles_vec[i])
+        #     self.particles_vec[i] = self.draw_arrow(robot.PF.particles[i], 0.1)
 
-        for i in range(robot.PF.numParticles):
-            pf_point = [robot.PF.particles[i].x, robot.PF.particles[i].y]
-            point = self.scale_points(pf_point, self.scale)
-            self.canvas.delete(self.particles_dot[i]) 
-            self.particles_dot[i] = self.canvas.create_oval(point[0] - 4, point[1] - 4, point[0] + 4, point[1] + 4, fill =  'red')
+        # for i in range(robot.PF.numParticles):
+        #     pf_point = [robot.PF.particles[i].x, robot.PF.particles[i].y]
+        #     point = self.scale_points(pf_point, self.scale)
+        #     self.canvas.delete(self.particles_dot[i]) 
+        #     self.particles_dot[i] = self.canvas.create_oval(point[0] - 4, point[1] - 4, point[0] + 4, point[1] + 4, fill =  'red')
 
         # add estimated and desired position arrows
-        self.update_arrow(robot.state_des, "des_arrow", 0.25)
-        self.update_arrow(robot.state_draw, "odo_arrow", 0.25)
-        self.update_arrow(robot.state_est, "est_arrow", 0.25)
+        # self.update_arrow(robot.state_des, "des_arrow", 0.25)
+        # self.update_arrow(robot.state_draw, "odo_arrow", 0.25)
+        self.update_arrow(robot.state_est_PF, "pf_est_arrow", 0.25)
 
     def draw_sigma_points(self, robot):
         
-        if robot.UKF.sigmaPoints != []:
-            for i in range(robot.UKF.numSigPoints):
-                self.canvas.delete(self.sigma_points_vec[i])
-                self.sigma_points_vec[i] = self.draw_arrow(robot.UKF.sigmaPoints[i], 0.1)
+        # if robot.UKF.sigmaPoints != []:
+        #     for i in range(robot.UKF.numSigPoints):
+        #         self.canvas.delete(self.sigma_points_vec[i])
+        #         self.sigma_points_vec[i] = self.draw_arrow(robot.UKF.sigmaPoints[i], 0.1)
 
-            for i in range(robot.UKF.numSigPoints):
-                sp_point = [robot.UKF.sigmaPoints[i].x, robot.UKF.sigmaPoints[i].y]
-                point = self.scale_points(sp_point, self.scale)
-                self.canvas.delete(self.sigma_points_dot[i]) 
-                self.sigma_points_dot[i] = self.canvas.create_oval(point[0] - 4, point[1] - 4, point[0] + 4, point[1] + 4, fill =  'red')
+        #     for i in range(robot.UKF.numSigPoints):
+        #         sp_point = [robot.UKF.sigmaPoints[i].x, robot.UKF.sigmaPoints[i].y]
+        #         point = self.scale_points(sp_point, self.scale)
+        #         self.canvas.delete(self.sigma_points_dot[i]) 
+        #         self.sigma_points_dot[i] = self.canvas.create_oval(point[0] - 4, point[1] - 4, point[0] + 4, point[1] + 4, fill =  'red')
 
         # add estimated and desired position arrows
         self.update_arrow(robot.state_des, "des_arrow", 0.25)
         self.update_arrow(robot.state_draw, "odo_arrow", 0.25)
-        self.update_arrow(robot.state_est, "est_arrow", 0.25)
+        self.update_arrow(robot.state_est_UKF, "ukf_est_arrow", 0.25)
 
         # print("\nEst State: ", robot.state_est)
         # print("Odo State: ", robot.state_draw)
@@ -241,11 +242,11 @@ class E160_graphics:
     
     def draw_confidence_ellipse(self, tag, robot):
         
-        x0 = robot.state_est.x + robot.UKF.covariance[0,0]
-        x1 = robot.state_est.x - robot.UKF.covariance[0,0]
+        x0 = robot.state_est_UKF.x + math.sqrt(robot.UKF.covariance[0,0]) #+ robot.UKF.covariance[0, 1] + robot.UKF.covariance[0, 2]
+        x1 = robot.state_est_UKF.x - math.sqrt(robot.UKF.covariance[0,0]) #+ robot.UKF.covariance[0, 1] + robot.UKF.covariance[0, 2]
 
-        y0 = robot.state_est.y + robot.UKF.covariance[1,1]
-        y1 = robot.state_est.y - robot.UKF.covariance[1,1]
+        y0 = robot.state_est_UKF.y + math.sqrt(robot.UKF.covariance[1,1])
+        y1 = robot.state_est_UKF.y - math.sqrt(robot.UKF.covariance[1,1])
 
         points = [x0, y0, x1, y1]
         [x0, y0, x1, y1] = self.scale_points(points, self.scale)
@@ -452,10 +453,9 @@ class E160_graphics:
         for r in self.environment.robots:
             self.draw_robot(r)
                 
-        # draw particles
-        # self.draw_particles(self.environment.robots[0])
-        
+        # draw particles/sigma points
         self.draw_sigma_points(self.environment.robots[0])
+        self.draw_particles(self.environment.robots[0])
 
         # draw sensors
 

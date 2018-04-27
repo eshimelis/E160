@@ -8,7 +8,7 @@ from E160_state import *
 # from scipy.stats import norm
 import scipy as sp
 
-class E160_UKF:
+class E160_AUKF:
 
     def __init__(self, environment, spaceDim, robotWidth, wheelRadius, encoderResolution, initialState = None, covariance = None):
         self.sigmaPoints = []
@@ -16,29 +16,56 @@ class E160_UKF:
 
         # ukf parameters
         self.n = spaceDim   # dimension of state space
+        self.wDim = 2
+        self.vDim = 3
+
         self.alpha = 0.001   # papers recommends 1e-3 (spread of sigma points)
         self.beta = 2       #
         self.kappa = 0      # usually set to 0 (secondary scaling parameter)
         self.lam = (self.alpha**2) * (self.n + self.kappa) - self.n
-        print("lam:", self.lam)
 
-        self.r_t = 0.0001  # process noise
-        self.q_t = 0.1  # measurement noise
-        self.R_t = self.r_t * np.identity(self.n)
-        self.Q_t = self.q_t * np.identity(self.n)
+        delta_s_std = 0.01
+        delta_theta_std = 0.1
+
+        num_sensors = 3
+        sensor_std = 0.1
+
+        W_t = [ [delta_s_std**2, 0],
+                [0, delta_theta_std**2]]
+        
+        self.W_t = np.array(W_t)    
+        self.V_t = (sensor_std**2) * np.identity(num_sensors)
 
         if covariance == None:
             # self.cov = 0.01
             # self.covariance = self.cov*np.identity(self.n)
 
-            cov = [ [0.0001, 0.00001, 0.0001],
-                    [0.00001, 0.0001, 0.0001],
-                    [0.0001, 0.0001, 0.0005]]
+            cov = [ [0.01, 0.0001, 0.0001],
+                    [0.0001, 0.01, 0.0001],
+                    [0.0001, 0.0001, 0.01]]
             self.covariance = np.array(cov)
         else:
             self.covariance = covariance
 
-        self.numSigPoints = 2*self.n + 1
+        self.augDim = self.n + self.wDim + self.vDim
+        self.aug_covariance = np.zeros((self.augDim, self.augDim))
+
+        # add state covariance
+        offset = 0
+        self.aug_covariance[offset:self.covariance.shape[0]+offset,offset:self.covariance.shape[1]+offset] = self.covariance
+
+        # add process covariance
+        offset = 3
+        self.aug_covariance[offset:self.W_t.shape[0]+offset,offset:self.W_t.shape[1]+offset] = self.W_t
+
+        # add measurement covariance
+        offset = 5
+        self.aug_covariance[offset:self.V_t.shape[0]+offset,offset:self.V_t.shape[1]+offset] = self.V_t
+
+        print("augmented matrix")
+        print(self.aug_covariance)
+
+        self.numSigPoints = 2*self.augDim + 1
 
         # maybe should just pass in a robot class?
         self.robotWidth = robotWidth
@@ -80,17 +107,19 @@ class E160_UKF:
         ''' Initialize a set of sigma points about the mean '''
         
         # intialize sigma set
-        X = []
+        X = np.zeros((self.augDim, self.numSigPoints))
         
-        # add mean to set
-        meanWeight = self.lam/(self.n + self.lam)
-        covWeight = meanWeight + (1-self.alpha**2 + self.beta)
-        # print("Mean Weight: ", meanWeight)
-        # print("Covariance Weight: ", covWeight)
-        X.append(self.SigmaPoint(mean.x, mean.y, mean.theta, meanWeight, covWeight))
+        self.meanWeights = []
+        self.covWeights = []
+
+        # add mean and weights to sigma sets
+        self.meanWeights.append(self.lam/(self.n + self.lam))
+        self.covWeights.append(self.meanWeights[0] + (1-self.alpha**2 + self.beta))
+        
+        X[:, [0]] = mean
 
         # ensure matrix symmetry
-        covariance = (1/2) *(covariance + np.transpose(covariance))
+        covariance = (1/2) * (covariance + np.transpose(covariance))
 
         # compute square root of covariance matrix
         # covariance = np.absolute(covariance)
@@ -98,35 +127,39 @@ class E160_UKF:
         # rootP = covariance
         # rootP = np.linalg.cholesky(covariance)
         
-        gamma = math.sqrt(self.n + self.lam)
+        gamma = math.sqrt(self.augDim + self.lam)
 
         # print(rootP)
 
         #### Verify or Remove ####
-        # rootP = np.absolute(rootP)
-        rootP = np.real(rootP)
+        # rootP = np.real(rootP)
         #### Verify or Remove ####
-
-        # create mean vector
-        xVec = mean.toVec()
 
         # intialize remaining sigma points
         meanWeight = 1/(2*(self.n + self.lam))
         covWeight = meanWeight
 
-        # print("Sigma Mean Weight:", meanWeight)
-        # print("Sigma Cov Weight: ", covWeight)
+        print(X.shape)
 
-        for i in range(self.DIM):
+        for i in range(1, self.augDim):
+            print(i)
             # create and append both positive and negative sigma points
-            # print("XVec", xVec)
-            # print("Offset: ", -gamma*rootP[:, [i]], "\n")
-            sigmaPointA = self.StateVecDiff(xVec, -gamma*rootP[:, [i]])
-            sigmaPointB = self.StateVecDiff(xVec, gamma*rootP[:, [i]])
-            spA = self.SigmaPoint(sigmaPointA[0,0], sigmaPointA[1,0], sigmaPointA[2,0], meanWeight, covWeight)
-            spB = self.SigmaPoint(sigmaPointB[0,0], sigmaPointB[1,0], sigmaPointB[2,0], meanWeight, covWeight)
-            X.append(spA)
-            X.append(spB)
+            sigmaPointA = mean + gamma*rootP[:, [i]]
+                        
+            self.meanWeights.append(meanWeight)
+            self.covWeights.append(covWeight)
+            
+            X[:, [i]] = sigmaPointA
+            
+        for i in range(0, self.augDim):
+            sigmaPointB = mean - gamma*rootP[:, [i]]
+            
+            self.meanWeights.append(meanWeight)
+            self.covWeights.append(covWeight)
+            
+            X[:, [i+self.augDim]] = sigmaPointB
+
+        print(X)
         return X
 
     def Propagate(self, Xprev, delta_s, delta_theta):
@@ -140,13 +173,16 @@ class E160_UKF:
         X = []
 
         for i in range(self.numSigPoints):
-            state = Xprev[i]
+            state = self.SigmaPoint(Xprev[0, i], Xprev[1, i], Xprev[2, i])
 
             delta_x = delta_s * math.cos(state.theta + delta_theta/2)
             delta_y = delta_s * math.sin(state.theta + delta_theta/2)
 
             # minus because robot is backwards
-            X.append(self.SigmaPoint(state.x - delta_x, state.y - delta_y, util.angle_wrap(state.theta + delta_theta), state.mWeight, state.cWeight))
+            X[:, [i]] = Xprev[:, [i]]
+            X[0, i] -= delta_x
+            X[1, i] -= delta_y
+            X[2, i] = util.angle_wrap(X[2, i] + delta_theta)
 
         return X
 
@@ -159,8 +195,16 @@ class E160_UKF:
             Return:
                 None'''
 
+        # create augmented state vector
+        zFront = sensor_readings[0]
+        zRight = sensor_readings[1]
+        zLeft = sensor_readings[2]
+        self.aug_state = np.transpose(np.array([[self.state.x, self.state.y, self.state.theta, delta_s, delta_theta, zFront, zRight, zLeft]]))
+
+        print("Augmented State:\n", self.aug_state, "\n")
+
         ## [2] generate set of sigma points
-        Xprev = self.GenerateSigmaPoints(self.state, self.covariance)
+        Xprev = self.GenerateSigmaPoints(self.aug_state, self.aug_covariance)
 
         #------------------------------------------------------------------
         ## [3] propagate set of sigma points
@@ -176,7 +220,7 @@ class E160_UKF:
         ## [5] calculate sigma bar
         sigmaBar = np.zeros((self.n, self.n))
         for i in range(self.numSigPoints):
-            sigmaBar += Xprev[i].cWeight * np.matmul(self.StateVecDiff(Xbar_star[i].toVec(), muBarVec), np.transpose(self.StateVecDiff(Xbar_star[i].toVec(), muBarVec)))
+            sigmaBar += Xprev[i].cWeight * np.matmul((Xbar_star[i].toVec() - muBarVec), np.transpose(Xbar_star[i].toVec() - muBarVec))
         sigmaBar += self.R_t # add additive noise
 
         #------------------------------------------------------------------
@@ -207,7 +251,7 @@ class E160_UKF:
         sigmaBar_XZ = np.zeros((self.n, len(self.sensor_orientation)))
         for i in range(self.numSigPoints):
             # sigmaBar_XZ += Xprev[i].cWeight * np.matmul((Xbar[i].toVec() - muBarVec), np.transpose(Zbar[:,[i]] - zBarVec))
-            sigmaBar_XZ += Xprev[i].cWeight * np.matmul(self.StateVecDiff(Xprev[i].toVec(), muBarVec), np.transpose(Zbar[:,[i]] - zBarVec))
+            sigmaBar_XZ += Xprev[i].cWeight * np.matmul((Xprev[i].toVec() - muBarVec), np.transpose(Zbar[:,[i]] - zBarVec))
 
         #------------------------------------------------------------------
         ## [11] compute Kalman Gain (K_t)
@@ -215,14 +259,18 @@ class E160_UKF:
         s_tInv = np.linalg.inv(s_t)
         K_t = np.matmul(sigmaBar_XZ, s_tInv)
 
-        # print("\n\nKalman Gain:\n", K_t)
+        print("\n\nKalman Gain:\n", K_t)
 
         #------------------------------------------------------------------
         ## [12] update state estimation (mu)
         # convert sensor readings to numpy array 
+        sensor_var = 0.3
+        front_noise = np.random.normal(0, sensor_var)
+        right_noise = np.random.normal(0, sensor_var)
+        left_noise = np.random.normal(0, sensor_var)
 
-        z = np.array([[sensor_readings[0]], [sensor_readings[1]], [sensor_readings[2]]])
-        mu = self.StateVecDiff(muBarVec, -np.matmul(K_t, (z - zBarVec)))
+        z = np.array([[sensor_readings[0]+front_noise], [sensor_readings[1]+right_noise], [sensor_readings[2]+left_noise]])
+        mu = muBarVec + np.matmul(K_t, (z - zBarVec))
 
         #------------------------------------------------------------------
         ## [13] update covariance estimation (sigma)
@@ -235,17 +283,9 @@ class E160_UKF:
         self.covariance = sigma
         self.sigmaPoints = Xbar
 
-        # print("\n Covariance:\n", self.covariance, "\n")
+        print("\n Covariance:\n", self.covariance, "\n")
 
         return self.state
-
-    def StateVecDiff(self, vec1, vec2):
-        
-        diff = vec1-vec2
-
-        # wrap angle
-        diff[2] = util.angle_wrap(diff[2])
-        return diff
 
     def ComputeExpSensor(self, X):
 
@@ -327,12 +367,10 @@ class E160_UKF:
         return ang
 
     class SigmaPoint(E160_state):
-        def __init__(self, x, y, theta, meanWeight, covarianceWeight):
+        def __init__(self, x, y, theta):
             self.x = x
             self.y = y
             self.theta = theta
-            self.mWeight = meanWeight
-            self.cWeight = covarianceWeight
 
             self.n = 3  # dimension of state space
 
@@ -352,4 +390,4 @@ class E160_UKF:
             self.weight = newWeight
 
         def copy(self):
-            return E160_UKF.SigmaPoint(self.x, self.y, self.theta, self.mWeight, self.cWeight)
+            return E160_UKF.SigmaPoint(self.x, self.y, self.theta)

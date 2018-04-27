@@ -9,7 +9,7 @@ from scipy.stats import norm
 
 class E160_PF:
 
-    def __init__(self, environment, robotWidth, wheel_radius, encoder_resolution):
+    def __init__(self, environment, robotWidth, wheel_radius, encoder_resolution, initialState = None):
         self.particles = []
         self.environment = environment
         self.numParticles = 100
@@ -47,8 +47,7 @@ class E160_PF:
         self.walls = self.environment.walls
 
         # initialize the current state
-        self.state = E160_state()
-        self.state.set_state(0,0,0)
+        self.state = initialState
 
         # TODO: change this later
         self.map_maxX = 4.0
@@ -86,7 +85,7 @@ class E160_PF:
                 sensor_readings([float, float, float]): sensor readings from range fingers
             Return:
                 None'''
-        print(sensor_readings)
+        # print(sensor_readings)
 
         # prevent sudden simulation jumps
         if self.start:
@@ -136,13 +135,13 @@ class E160_PF:
         ESS = 1.0/(1.0 + CV)
 
         if (ESS < self.sampling_threshold):
-            print("Resampling")
+            # print("Resampling")
             # self.Resample()
             self.ResampleLowVar()
                 
         return self.GetEstimatedPos()
 
-    def LocalizeEstWithParticleFilter(self, state_odo, delta_s, delta_theta, sensor_readings):
+    def LocalizeEstWithParticleFilter(self, delta_s, delta_theta, sensor_readings):
         ''' Localize the robot with particle filters. Call everything
             Args: 
                 delta_s (float): change in distance as calculated by odometry
@@ -150,7 +149,7 @@ class E160_PF:
                 sensor_readings([float, float, float]): sensor readings from range fingers
             Return:
                 None'''
-        print(sensor_readings)
+        # print(sensor_readings)
         self.particle_weight_sum = 0
 
         for i in range(self.numParticles):
@@ -176,7 +175,7 @@ class E160_PF:
         ESS = 1.0/(1.0 + CV)
 
         if (ESS < self.sampling_threshold):
-            print("Resampling")
+            # print("Resampling")
             # self.Resample()
             self.ResampleLowVar()
 

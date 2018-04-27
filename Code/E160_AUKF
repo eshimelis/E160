@@ -20,10 +20,9 @@ class E160_UKF:
         self.beta = 2       #
         self.kappa = 0      # usually set to 0 (secondary scaling parameter)
         self.lam = (self.alpha**2) * (self.n + self.kappa) - self.n
-        print("lam:", self.lam)
 
-        self.r_t = 0.0001  # process noise
-        self.q_t = 0.1  # measurement noise
+        self.r_t = 0.005  # process noise
+        self.q_t = 0.06  # measurement noise
         self.R_t = self.r_t * np.identity(self.n)
         self.Q_t = self.q_t * np.identity(self.n)
 
@@ -31,9 +30,9 @@ class E160_UKF:
             # self.cov = 0.01
             # self.covariance = self.cov*np.identity(self.n)
 
-            cov = [ [0.0001, 0.00001, 0.0001],
-                    [0.00001, 0.0001, 0.0001],
-                    [0.0001, 0.0001, 0.0005]]
+            cov = [ [0.01, 0.0001, 0.0001],
+                    [0.0001, 0.01, 0.0001],
+                    [0.0001, 0.0001, 0.01]]
             self.covariance = np.array(cov)
         else:
             self.covariance = covariance
@@ -85,8 +84,6 @@ class E160_UKF:
         # add mean to set
         meanWeight = self.lam/(self.n + self.lam)
         covWeight = meanWeight + (1-self.alpha**2 + self.beta)
-        # print("Mean Weight: ", meanWeight)
-        # print("Covariance Weight: ", covWeight)
         X.append(self.SigmaPoint(mean.x, mean.y, mean.theta, meanWeight, covWeight))
 
         # ensure matrix symmetry
@@ -94,8 +91,8 @@ class E160_UKF:
 
         # compute square root of covariance matrix
         # covariance = np.absolute(covariance)
-        rootP = sp.linalg.sqrtm(covariance)
-        # rootP = covariance
+        # rootP = sp.linalg.sqrtm(covariance)
+        rootP = covariance
         # rootP = np.linalg.cholesky(covariance)
         
         gamma = math.sqrt(self.n + self.lam)
@@ -103,8 +100,7 @@ class E160_UKF:
         # print(rootP)
 
         #### Verify or Remove ####
-        # rootP = np.absolute(rootP)
-        rootP = np.real(rootP)
+        # rootP = np.real(rootP)
         #### Verify or Remove ####
 
         # create mean vector
@@ -114,15 +110,10 @@ class E160_UKF:
         meanWeight = 1/(2*(self.n + self.lam))
         covWeight = meanWeight
 
-        # print("Sigma Mean Weight:", meanWeight)
-        # print("Sigma Cov Weight: ", covWeight)
-
         for i in range(self.DIM):
             # create and append both positive and negative sigma points
-            # print("XVec", xVec)
-            # print("Offset: ", -gamma*rootP[:, [i]], "\n")
-            sigmaPointA = self.StateVecDiff(xVec, -gamma*rootP[:, [i]])
-            sigmaPointB = self.StateVecDiff(xVec, gamma*rootP[:, [i]])
+            sigmaPointA = xVec + gamma*rootP[:, i]
+            sigmaPointB = xVec - gamma*rootP[:, i]
             spA = self.SigmaPoint(sigmaPointA[0,0], sigmaPointA[1,0], sigmaPointA[2,0], meanWeight, covWeight)
             spB = self.SigmaPoint(sigmaPointB[0,0], sigmaPointB[1,0], sigmaPointB[2,0], meanWeight, covWeight)
             X.append(spA)
@@ -176,7 +167,7 @@ class E160_UKF:
         ## [5] calculate sigma bar
         sigmaBar = np.zeros((self.n, self.n))
         for i in range(self.numSigPoints):
-            sigmaBar += Xprev[i].cWeight * np.matmul(self.StateVecDiff(Xbar_star[i].toVec(), muBarVec), np.transpose(self.StateVecDiff(Xbar_star[i].toVec(), muBarVec)))
+            sigmaBar += Xprev[i].cWeight * np.matmul((Xbar_star[i].toVec() - muBarVec), np.transpose(Xbar_star[i].toVec() - muBarVec))
         sigmaBar += self.R_t # add additive noise
 
         #------------------------------------------------------------------
@@ -207,7 +198,7 @@ class E160_UKF:
         sigmaBar_XZ = np.zeros((self.n, len(self.sensor_orientation)))
         for i in range(self.numSigPoints):
             # sigmaBar_XZ += Xprev[i].cWeight * np.matmul((Xbar[i].toVec() - muBarVec), np.transpose(Zbar[:,[i]] - zBarVec))
-            sigmaBar_XZ += Xprev[i].cWeight * np.matmul(self.StateVecDiff(Xprev[i].toVec(), muBarVec), np.transpose(Zbar[:,[i]] - zBarVec))
+            sigmaBar_XZ += Xprev[i].cWeight * np.matmul((Xprev[i].toVec() - muBarVec), np.transpose(Zbar[:,[i]] - zBarVec))
 
         #------------------------------------------------------------------
         ## [11] compute Kalman Gain (K_t)
@@ -215,14 +206,18 @@ class E160_UKF:
         s_tInv = np.linalg.inv(s_t)
         K_t = np.matmul(sigmaBar_XZ, s_tInv)
 
-        # print("\n\nKalman Gain:\n", K_t)
+        print("\n\nKalman Gain:\n", K_t)
 
         #------------------------------------------------------------------
         ## [12] update state estimation (mu)
         # convert sensor readings to numpy array 
+        sensor_var = 0.3
+        front_noise = np.random.normal(0, sensor_var)
+        right_noise = np.random.normal(0, sensor_var)
+        left_noise = np.random.normal(0, sensor_var)
 
-        z = np.array([[sensor_readings[0]], [sensor_readings[1]], [sensor_readings[2]]])
-        mu = self.StateVecDiff(muBarVec, -np.matmul(K_t, (z - zBarVec)))
+        z = np.array([[sensor_readings[0]+front_noise], [sensor_readings[1]+right_noise], [sensor_readings[2]+left_noise]])
+        mu = muBarVec + np.matmul(K_t, (z - zBarVec))
 
         #------------------------------------------------------------------
         ## [13] update covariance estimation (sigma)
@@ -235,17 +230,9 @@ class E160_UKF:
         self.covariance = sigma
         self.sigmaPoints = Xbar
 
-        # print("\n Covariance:\n", self.covariance, "\n")
+        print("\n Covariance:\n", self.covariance, "\n")
 
         return self.state
-
-    def StateVecDiff(self, vec1, vec2):
-        
-        diff = vec1-vec2
-
-        # wrap angle
-        diff[2] = util.angle_wrap(diff[2])
-        return diff
 
     def ComputeExpSensor(self, X):
 

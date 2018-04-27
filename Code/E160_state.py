@@ -29,7 +29,7 @@ class E160_state:
     # deep copy of robot state
     def copy(self):
         return E160_state(self.x, self.y, self.theta)
-    
+
     def toVec(self):
         array = np.array([[self.x], [self.y], [self.theta]])
         return array
