@@ -4,7 +4,7 @@ logpath = '../../Code/Log/';
 addpath(logpath)
 
 % logfilename = 'Bot0_2018_04_02_14_32_08'; % before fix
-logfilename = 'Bot0_2018_04_26_20_32_46';
+logfilename = 'UKFvsPF';
 
 state = ReadBotState([logpath, logfilename]);
 
@@ -16,9 +16,10 @@ time = linspace(0, deltaT*length(state.XDes), length(state.XDes));
 
 %%
 
-figure(3); clf; hold on; grid on; grid minor;
+figure(1); clf; hold on; grid on; grid minor;
 plot(state.XOdo, state.YOdo, 'linewidth', 6);
 plot(state.XEstUKF, state.YEstUKF, 'linewidth', 4);
+plot(state.XEstPF, state.YEstPF, 'linewidth', 4);
 
 plot(state.XOdo(1), state.YOdo(1), 'x', 'markersize', 24, 'color', [0.8500, 0.3250, 0.0980], 'linewidth', 3);
 % plot(state.XDes(10), state.YDes(10), 'square', 'markersize', 24, 'color', [0.4660, 0.6740, 0.1880], 'linewidth', 3);
@@ -41,29 +42,50 @@ for k = 1:length(map)
     plot([wall(1), wall(3)], [wall(2), wall(4)], 'linewidth', 5, 'color', [0, 0, 0])
 end
 
-title('Overhead Map Filter Comparison', 'Interpreter', 'Latex');
+title('Overhead Map UKF Position Estimate', 'Interpreter', 'Latex');
 xlabel('X Position (m)', 'Interpreter', 'Latex');
 ylabel('Y Position (m)', 'Interpreter', 'Latex');
-legend('Odometry Estimate', 'UKF Estimate', 'Location', 'northeast');
+legend('Odometry Estimate', 'UKF Estimate', 'Particle Filter Estimate', 'Location', 'northeast');
 set(gca, 'fontsize', 32); hold off;
 axis([-0.25 4.25 -0.25 4.25]); pbaspect([1 1 1]);
 
 hold off;
 
-%% Plot error over time
+%% Plot UKF error over time
 
-odometryPos = sqrt(state.XOdo.^2 + state.YOdo.^2);
-estimatePos = sqrt(state.XEstUKF.^2 + state.YEstUKF.^2);
+% odometryPos = sqrt(state.XOdo.^2 + state.YOdo.^2);
+% estimatePos = sqrt(state.XEstUKF.^2 + state.YEstUKF.^2);
 
-error = odometryPos - estimatePos;
-rmse = sqrt(mean(error.^2));
+error = sqrt((state.XOdo-state.XEstUKF).^2 + (state.YOdo - state.YEstUKF).^2)
+rmse = sqrt(mean(error.^2))
 
 figure(2); clf; hold on; grid on; grid minor; 
 stem(time, error);
-title('Position Error over time');
+title('UKF Estimation Error');
 xlabel('Time (s)');
-ylabel('Estimation Error (m)');
+ylabel('Position Error (m)');
 set(gca, 'fontsize', 32); hold off;
+
+%% Plot error over time
+
+% odometryPos = sqrt(state.XOdo.^2 + state.YOdo.^2);
+% estimatePos = sqrt(state.XEstUKF.^2 + state.YEstUKF.^2);
+
+UKFerror = sqrt((state.XOdo-state.XEstUKF).^2 + (state.YOdo - state.YEstUKF).^2);
+PFerror = sqrt((state.XOdo-state.XEstPF).^2 + (state.YOdo - state.YEstPF).^2);
+
+UKFrmse = sqrt(mean(UKFerror.^2))
+PFrmse = sqrt(mean(PFerror.^2))
+
+figure(3); clf; hold on; grid on; grid minor; 
+stem(time, UKFerror);
+stem(time, PFerror);
+title('UKF versus PF Estimation Error');
+xlabel('Time (s)');
+ylabel('Position Error (m)');
+set(gca, 'fontsize', 32); hold off;
+
+legend('UKF Error', 'PF Error')
 
 %% Plot overhead map compare filters
 

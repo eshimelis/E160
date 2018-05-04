@@ -13,7 +13,7 @@ def main():
     
     # set time step size in seconds
     deltaT = 0.05
-    simRate = 8
+    simRate = 10
     # loop over time
     while True:
         # update graphics, but stop the thread if user stopped the gui

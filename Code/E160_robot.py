@@ -176,7 +176,7 @@ class E160_robot:
         #              E160_state(0, 0, 1.57), E160_state(0, 0, -1.57), E160_state(0, 0, 0), 
         #              E160_state(0, 0, 3.14), E160_state(0, 0, 0), E160_state(0, 0, -3.14), E160_state(0, 0, 2), E160_state(0, 0, -2)]
 
-        state_offset = [0.6, -1, 0]
+        state_offset = [0, 0, 0]
         self.state_filter = E160_state()
         self.state_filter.set_state(self.state_odo.x+state_offset[0], self.state_odo.y+state_offset[1], self.state_odo.theta+state_offset[2])
         
@@ -222,7 +222,7 @@ class E160_robot:
         # self.state_est_PF = self.PF.LocalizeEstWithParticleFilter(delta_s, delta_theta, self.range_measurements)
         
         # testing
-        # self.state_est_PF = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
+        self.state_est_PF = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
 
         self.state_est_UKF = self.UKF.LocalizeEstWithUKF(delta_s, delta_theta, self.range_measurements)
 
@@ -359,7 +359,7 @@ class E160_robot:
         # state_est = self.state_est_UKF
 
         # calculate state error 
-        self.state_error = self.state_des-state_est
+        # self.state_error = self.state_des-state_est
         error = self.state_error
 
         # stop point tracking if close enough

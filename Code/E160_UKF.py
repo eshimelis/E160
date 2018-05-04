@@ -16,14 +16,14 @@ class E160_UKF:
 
         # ukf parameters
         self.n = spaceDim   # dimension of state space
-        self.alpha = 0.001   # papers recommends 1e-3 (spread of sigma points)
+        self.alpha = 0.0001   # papers recommends 1e-3 (spread of sigma points)
         self.beta = 2       #
         self.kappa = 0      # usually set to 0 (secondary scaling parameter)
         self.lam = (self.alpha**2) * (self.n + self.kappa) - self.n
         print("lam:", self.lam)
 
         self.r_t = 0.0001  # process noise
-        self.q_t = 0.1  # measurement noise
+        self.q_t = 0.8  # measurement noise
         self.R_t = self.r_t * np.identity(self.n)
         self.Q_t = self.q_t * np.identity(self.n)
 
@@ -31,9 +31,9 @@ class E160_UKF:
             # self.cov = 0.01
             # self.covariance = self.cov*np.identity(self.n)
 
-            cov = [ [0.0001, 0.00001, 0.0001],
-                    [0.00001, 0.0001, 0.0001],
-                    [0.0001, 0.0001, 0.0005]]
+            cov = [ [0.0001, 0.00001, 0.00001],
+                    [0.00001, 0.0001, 0.00001],
+                    [0.00001, 0.00001, 0.001]]
             self.covariance = np.array(cov)
         else:
             self.covariance = covariance
@@ -69,11 +69,7 @@ class E160_UKF:
             self.state = initialState.copy()
             self.state_prev = initialState.copy()
 
-        self.map_maxX = 4.0
-        self.map_minX = 0
-        self.map_maxY = 4.0
-        self.map_minY = 0
-
+        self.debug = False
         # self.last_encoder_measurements = [0,0]
 
     def GenerateSigmaPoints(self, mean, covariance):
@@ -90,7 +86,7 @@ class E160_UKF:
         X.append(self.SigmaPoint(mean.x, mean.y, mean.theta, meanWeight, covWeight))
 
         # ensure matrix symmetry
-        covariance = (1/2) *(covariance + np.transpose(covariance))
+        covariance = (1/2)*(covariance + np.transpose(covariance))
 
         # compute square root of covariance matrix
         # covariance = np.absolute(covariance)
@@ -100,7 +96,9 @@ class E160_UKF:
         
         gamma = math.sqrt(self.n + self.lam)
 
-        # print(rootP)
+        if self.debug:
+            print("\nCovariance: \n", covariance)
+            print("\nRootP: \n", rootP)
 
         #### Verify or Remove ####
         # rootP = np.absolute(rootP)
@@ -161,17 +159,30 @@ class E160_UKF:
 
         ## [2] generate set of sigma points
         Xprev = self.GenerateSigmaPoints(self.state, self.covariance)
+        
+        if self.debug: 
+            print("\nXprev: \n", Xprev)
+            input()
 
         #------------------------------------------------------------------
         ## [3] propagate set of sigma points
         Xbar_star = self.Propagate(Xprev, delta_s, delta_theta) 
+
+        if self.debug: 
+            print("\nXbar_star: \n", Xbar_star)
+            input()
 
         #------------------------------------------------------------------
         ## [4] calculate mu bar
         muBarVec = np.zeros((self.n, 1))
         for i in range(self.numSigPoints):
             muBarVec += Xbar_star[i].mWeight * Xbar_star[i].toVec()
+        
+        muBarVec[2] = util.angle_wrap(muBarVec[2])
 
+        if self.debug: 
+            print("\nmuBarVec: \n", muBarVec)
+            input()
         #------------------------------------------------------------------
         ## [5] calculate sigma bar
         sigmaBar = np.zeros((self.n, self.n))
@@ -179,15 +190,27 @@ class E160_UKF:
             sigmaBar += Xprev[i].cWeight * np.matmul(self.StateVecDiff(Xbar_star[i].toVec(), muBarVec), np.transpose(self.StateVecDiff(Xbar_star[i].toVec(), muBarVec)))
         sigmaBar += self.R_t # add additive noise
 
+        if self.debug: 
+            print("\nsigmaBar: \n", sigmaBar)
+            input()
+
         #------------------------------------------------------------------
         ## [6] new sigma points
         # convert mubarVec to a sigma point
         muBar = self.SigmaPoint(muBarVec[0,0], muBarVec[1,0], muBarVec[2,0], Xprev[0].mWeight, Xprev[0].cWeight)
         Xbar = self.GenerateSigmaPoints(muBar, sigmaBar)
 
+        if self.debug: 
+            print("\nXbar: \n", Xbar)
+            input()
+
         #------------------------------------------------------------------
         ## [7] compute expected measurements (Z_t)
         Zbar = self.ComputeExpSensor(Xbar)
+
+        if self.debug: 
+            print("\nZbar: \n", Zbar)
+            input()
 
         #------------------------------------------------------------------
         ## [8] compute average measurement (z_t)
@@ -200,6 +223,16 @@ class E160_UKF:
         s_t = np.zeros((len(self.sensor_orientation), len(self.sensor_orientation)))
         for i in range(self.numSigPoints):
             s_t += Xprev[i].cWeight * np.matmul((Zbar[:,[i]] - zBarVec), np.transpose(Zbar[:,[i]] - zBarVec))
+        
+        z_front = sensor_readings[0]
+        z_right = sensor_readings[1] 
+        z_left = sensor_readings[2]
+
+        z_front_adj = (z_front/self.FAR_READING)*0.8 + 0.05
+        z_right_adj = (z_right/self.FAR_READING)*0.8 + 0.05
+        z_left_adj = (z_left/self.FAR_READING)*0.8 + 0.05
+
+        self.Q_t = np.array([[z_front_adj, 0, 0],[0, z_right_adj, 0],[0, 0, z_left_adj]])
         s_t += self.Q_t # add additive sensor noise
 
         #------------------------------------------------------------------
@@ -281,7 +314,7 @@ class E160_UKF:
             if wallDist == None:
                 minDist = min(minDist, self.FAR_READING)
             else: minDist = min(minDist, wallDist)
-            
+        
         return minDist
     
     def FindWallDistance(self, particle, wall, sensorT):
