@@ -27,7 +27,7 @@ class E160_robot:
 
         # desired state
         self.state_des = E160_state()
-        self.state_des.set_state(0,0,0)
+        self.state_des.set_state(3.5,0.75,0)
 
         # state error (des-est)
         self.state_error = E160_state()
@@ -117,7 +117,7 @@ class E160_robot:
             self.max_velocity = 0.05
             self.max_ang_velocity = 0.5
 
-            self.min_ptrack_dist_error = 0.03   # meters
+            self.min_ptrack_dist_error = 0.05   # meters
             self.min_ptrack_ang_error = 0.05    # radians
 
         else:
@@ -222,7 +222,6 @@ class E160_robot:
         # self.state_est = self.state_odo
 
 
-
         # add encoder noise only to simulation
         if self.environment.control_mode == "SIMULATION MODE":
             delta_s += np.random.normal(0, self.s_std)
@@ -239,9 +238,9 @@ class E160_robot:
         # self.state_est_PF = self.PF.LocalizeEstWithParticleFilter(delta_s, delta_theta, self.range_measurements)
 
         # testing
-        self.state_est_PF = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
+        # self.state_est_PF = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
 
-        self.state_est_UKF = self.UKF.LocalizeEstWithUKF(delta_s, delta_theta, self.range_measurements)
+        # self.state_est_UKF = self.UKF.LocalizeEstWithUKF(delta_s, delta_theta, self.range_measurements)
 
         # augmented ukf testing
         # self.state_est_AUKF = self.AUKF.LocalizeEstWithUKF(delta_s, delta_theta, self.range_measurements)
@@ -256,6 +255,8 @@ class E160_robot:
         self.motion_plan()
         self.track_trajectory()
 
+        # print("Trajectory: ", self.trajectory)
+
         # determine new control signals
         self.R, self.L = self.update_control(self.range_measurements)
 
@@ -266,7 +267,7 @@ class E160_robot:
         if (self.replan_path == True):
             # Reset destination
             self.path_counter = 0
-            self.state_curr_dest = self.state_des
+            self.state_curr_dest = self.state_odo
 
             # Set goal node
             goal_node = E160_MP.Node(self.state_des.x, self.state_des.y)
@@ -284,26 +285,37 @@ class E160_robot:
         self.trajectory = []
         prev_node = node_list[0]
         self.trajectory.append(E160_state(prev_node.x, prev_node.y, 0))
-        for index in node_indices[1:]:
-            current_node = node_list[index]
-            prev_node = node_list[index-1]
-            desired_angle = -self.angle_wrap(math.atan2(current_node.y -prev_node.y, 
+        # for index in node_indices[1:]:
+        #     current_node = node_list[index]
+        #     prev_node = node_list[index-1]
+        #     desired_angle = util.angle_wrap(math.atan2(prev_node.y-current_node.y, 
+        #         prev_node.x - current_node.x))
+        #     desired_state = E160_state(current_node.x, current_node.y, desired_angle)
+        #     self.trajectory.append(desired_state)
+
+        for i in range(1,len(node_indices)):
+            current_node = node_list[node_indices[i]]
+            prev_node = node_list[node_indices[i-1]]
+            desired_angle = util.angle_wrap(math.atan2(current_node.y-prev_node.y, 
                 current_node.x - prev_node.x))
-            desired_state = E160_state(current_node.x, current_node.y, 0)
+            desired_state = E160_state(current_node.x, current_node.y, desired_angle)
             self.trajectory.append(desired_state)
+
+        print("Trajectory Length: ", len(self.trajectory))
+        print("Trajectory: ", self.trajectory)
     
     def track_trajectory(self):
         '''Update the self.state_curr_dest for the point tracker  '''
         
         # calculate state error 
-        self.state_error = self.state_curr_dest-self.state_est
-        error = self.state_error
+        error = self.state_curr_dest-self.state_est
+        # error = self.state_error
 
         if (self.state_est.xydist(self.state_curr_dest) < self.min_ptrack_dist_error and abs(error.theta) < self.min_ptrack_ang_error): 
             self.point_tracked = True
             self.state_curr_dest = self.trajectory[self.path_counter]
             if self.path_counter < len(self.trajectory) - 1:
-                self.path_counter = self.path_counter+1
+                self.path_counter = self.path_counter + 1
         else: 
             self.point_tracked = False
 
@@ -426,12 +438,10 @@ class E160_robot:
 
         # calculate state error
         # self.state_error = self.state_des-state_est
-        error = self.state_error
-
-        # self.state_des = self.state_curr_dest
+        error = self.state_curr_dest - self.state_est
 
         # stop point tracking if close enough
-        if (state_est.xydist(self.state_des) < self.min_ptrack_dist_error and abs(error.theta) < self.min_ptrack_ang_error):
+        if (state_est.xydist(self.state_curr_dest) < self.min_ptrack_dist_error and abs(error.theta) < self.min_ptrack_ang_error):
             self.point_tracked = True
         else:
             self.point_tracked = False
@@ -448,7 +458,7 @@ class E160_robot:
                 else:
                     rho = math.sqrt(error.x**2 + error.y**2)
                     alpha = util.ang_diff(math.atan2(error.y, error.x), state_est.theta)
-                    beta = util.ang_diff(util.ang_diff(-state_est.theta, alpha), -self.state_des.theta)
+                    beta = util.ang_diff(util.ang_diff(-state_est.theta, alpha), -self.state_curr_dest.theta)
                 v = self.Kpho*rho
 
             # backwards
@@ -460,7 +470,7 @@ class E160_robot:
                 else:
                     rho = math.sqrt(error.x**2 + error.y**2)
                     alpha = util.ang_diff(math.atan2(-error.y, -error.x), state_est.theta)
-                    beta = util.ang_diff(util.ang_diff(-state_est.theta, alpha), -self.state_des.theta)
+                    beta = util.ang_diff(util.ang_diff(-state_est.theta, alpha), -self.state_curr_dest.theta)
                 v = -self.Kpho*rho
 
 
@@ -479,8 +489,8 @@ class E160_robot:
 
         else:
             self.point_tracked = False
-            self.state_des = self.path[self.path_counter]
-            self.path_counter = (self.path_counter+1)%len(self.path)
+            # self.state_des = self.path[self.path_counter]
+            # self.path_counter = (self.path_counter+1)%len(self.path)
             desiredWheelSpeedR = 0
             desiredWheelSpeedL = 0
 

@@ -12,8 +12,8 @@ def main():
     graphics = E160_graphics(environment)
     
     # set time step size in seconds
-    deltaT = 0.05
-    simRate = 10
+    deltaT = 0.1
+    simRate = 100
     # loop over time
     while True:
         # update graphics, but stop the thread if user stopped the gui

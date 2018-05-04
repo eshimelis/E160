@@ -20,7 +20,7 @@ class E160_UKF:
         self.beta = 2       #
         self.kappa = 0      # usually set to 0 (secondary scaling parameter)
         self.lam = (self.alpha**2) * (self.n + self.kappa) - self.n
-        print("lam:", self.lam)
+        # print("lam:", self.lam)
 
         self.r_t = 0.0001  # process noise
         self.q_t = 0.8  # measurement noise

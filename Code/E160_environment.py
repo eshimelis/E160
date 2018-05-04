@@ -71,6 +71,8 @@ class E160_environment:
         wall5 = [1.75+0.87, 1.8, 1.75+0.87, 1.8-0.38]
         wall6 = [1.75+0.87, 1.8-0.38, 4, 1.8-0.38]
 
+        
+
         self.walls.append(E160_wall(wall1a))
         self.walls.append(E160_wall(wall1b))
         self.walls.append(E160_wall(wall2))
@@ -82,12 +84,15 @@ class E160_environment:
         self.walls.append(E160_wall(door1a))
         self.walls.append(E160_wall(door1b))
         self.walls.append(E160_wall(door1c))
-        
-        # door 1 
-        # self.walls.append(E160_wall(wall7))
-        # self.walls.append(E160_wall(wall8))
 
-        # 94, 185
+        # added obstacles
+        wall7 = [1.75, 2, 0.75, 2]
+        wall8 = [3, 1.8-0.38, 3, 0.5]
+        wall9 = [1.5, 0, 1.5, 1]
+
+        self.walls.append(E160_wall(wall7))
+        self.walls.append(E160_wall(wall8))
+        self.walls.append(E160_wall(wall9))
 
         # create vars for hardware vs simulation
         self.robot_mode = "SIMULATION MODE"#"SIMULATION MODE" or "HARDWARE MODE"

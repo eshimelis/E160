@@ -110,6 +110,7 @@ class E160_graphics:
 
         # desired and estimated state arrow
         self.arrow_des = self.canvas.create_line(0, 0, 0, 0, tags=("des_arrow",), arrow="last", fill="orange red", width=8)
+        self.arrow_temp_des = self.canvas.create_line(0, 0, 0, 0, tags=("temp_des_arrow",), arrow="last", fill="forest green", width=8)
         self.arrow_odo = self.canvas.create_line(0, 0, 0, 0, tags=("odo_arrow",), arrow="last", fill="steel blue", width=4)
         self.arrow_est_pf = self.canvas.create_line(0, 0, 0, 0, tags=("pf_est_arrow",), arrow="last", fill="purple4", width=4)
         self.arrow_est_ukf = self.canvas.create_line(0, 0, 0, 0, tags=("ukf_est_arrow",), arrow="last", fill="tomato", width=4)
@@ -239,6 +240,7 @@ class E160_graphics:
         #         self.sigma_points_dot[i] = self.canvas.create_oval(point[0] - 4, point[1] - 4, point[0] + 4, point[1] + 4, fill =  'red')
 
         # add estimated and desired position arrows
+        self.update_arrow(robot.state_curr_dest, "temp_des_arrow", 0.25)
         self.update_arrow(robot.state_des, "des_arrow", 0.25)
         self.update_arrow(robot.state_draw, "odo_arrow", 0.25)
         self.update_arrow(robot.state_est_UKF, "ukf_est_arrow", 0.25)
@@ -325,10 +327,10 @@ class E160_graphics:
         
         # draw robots
         for r in self.environment.robots:
-            x_des = float(self.x_des_entry.get())
-            y_des = float(self.y_des_entry.get())
-            theta_des = float(self.theta_des_entry.get())
-            r.state_des.set_state(x_des,y_des,theta_des)
+            # x_des = float(self.x_des_entry.get())
+            # y_des = float(self.y_des_entry.get())
+            # theta_des = float(self.theta_des_entry.get())
+            # r.state_des.set_state(x_des,y_des,theta_des)
             r.replan_path = True
 
     def track_waypoint(self):
@@ -477,7 +479,7 @@ class E160_graphics:
             for child in node.children:
                 node_point = self.scale_points([node.x, node.y], self.scale)
                 child_point = self.scale_points([child.x, child.y], self.scale)
-                self.RRT.append(self.canvas.create_line(node_point, child_point, fill="gray"))
+                self.RRT.append(self.canvas.create_line(node_point, child_point, fill="purple4"))
                 self.draw_rrt_help(child)
 
     def draw_trajectory(self):
@@ -527,6 +529,7 @@ class E160_graphics:
 
         # draw path
         self.draw_rrt()
+        self.draw_trajectory()
 
         # update the graphics
         self.tk.update()

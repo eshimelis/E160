@@ -62,8 +62,8 @@ class E160_AUKF:
         offset = 5
         self.aug_covariance[offset:self.V_t.shape[0]+offset,offset:self.V_t.shape[1]+offset] = self.V_t
 
-        print("augmented matrix")
-        print(self.aug_covariance)
+        # print("augmented matrix")
+        # print(self.aug_covariance)
 
         self.numSigPoints = 2*self.augDim + 1
 

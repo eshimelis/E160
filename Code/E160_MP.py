@@ -32,8 +32,10 @@ class E160_MP:
        self.start_node = self.Node(start_robot_state.x, start_robot_state.y)
        # self.start_node = start_node
        self.addNode(self.start_node)
-       self.max_expansion_dist = .5
-       self.collision_tolerance = .1
+
+       self.min_expansion_dist = 0.75
+       self.max_expansion_dist = 1
+       self.collision_tolerance = 0.05
 
     def update_plan(self, start_robot_state, goal_node):
         self.cell_grid = {}
@@ -97,41 +99,33 @@ class E160_MP:
         # while loop to continue add node until one of the criteria
         # is met
         while(iteration < self.MAX_NODE_NUMBER and path_found == False):
-            print("looking for goal")
+            # input()
+            # print("looking for goal")
 
             # Add Code: randomly select an expansion node
             expanded_node = self.select_expansion_node()
 
-
-
-
-
-
             # Add Code: From the expansion node, create a new node
-            dist = np.random.uniform(0,self.max_expansion_dist)
+            dist = np.random.uniform(self.min_expansion_dist,self.max_expansion_dist)
             angle = np.random.uniform(0, 2*math.pi)
             new_x = expanded_node.x + dist*math.cos(angle)
             new_y = expanded_node.y + dist*math.sin(angle)
-            new_node = self.Node(new_x, new_y, expanded_node, index = expanded_node.index + 1)
+            # print("Expanded Node: (", expanded_node.x, ", ", expanded_node.y, ")")
+            # print("New Node: (", new_x, ", ", new_y, ")")
+            new_node = self.Node(new_x, new_y, parent=expanded_node, index = expanded_node.index + 1)
 
-
-            # Add Code: check collision for the expansion
-            #if ...
-            if(not self.check_collision(expanded_node, new_node, self.collision_tolerance)):
+            #check expansion for the collision
+            if not self.check_collision(expanded_node, new_node, self.collision_tolerance):
                 self.addNode(new_node)
                 expanded_node.children.append(new_node)
 
-
-                # Add Code: check if stopping criteria is met or not
-            if(not self.check_collision(new_node, self.goal_node, self.collision_tolerance)):
-                print("Found goal!")
-                goal_node.parent = new_node
-                new_node.children.append(goal_node)
-                path_found = True
-                
-
-
-
+                # check stopping criteria
+                if not self.check_collision(new_node, self.goal_node, self.collision_tolerance):
+                    print("Found goal!")
+                    goal_node.parent = new_node
+                    new_node.children.append(goal_node)
+                    self.addNode(goal_node)
+                    path_found = True
 
             # keep track of the number of attempted expansions
             iteration += 1
@@ -184,6 +178,10 @@ class E160_MP:
             b2 = self.check_line_collision(node1, node2, line_p2, line_p3)
             b3 = self.check_line_collision(node1, node2, line_p3, line_p4)
             b4 = self.check_line_collision(node1, node2, line_p4, line_p1)
+
+            # print("Node1: ", node1)
+            # print("Node2: ", node2)
+            # print("Collision? ", b1 or b2 or b3 or b4, "\n")
 
             # if there is a collision,
             if (b1 or b2 or b3 or b4):
