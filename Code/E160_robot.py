@@ -195,7 +195,7 @@ class E160_robot:
         # add motion planner
         self.MP = E160_MP(environment, self.state_odo, self.radius)
         self.build_path([0], self.MP.node_list)
-        self.replan_path = False
+        self.replan_path = True
 
         # simluation noise parameters
         self.s_std = 0.001
@@ -266,7 +266,7 @@ class E160_robot:
         if (self.replan_path == True):
             # Reset destination
             self.path_counter = 0
-            self.state_curr_dest = self.state_est
+            self.state_curr_dest = self.state_des
 
             # Set goal node
             goal_node = E160_MP.Node(self.state_des.x, self.state_des.y)
@@ -428,8 +428,8 @@ class E160_robot:
         # self.state_error = self.state_des-state_est
         error = self.state_error
 
-        self.state_des = self.state_curr_dest
-        
+        # self.state_des = self.state_curr_dest
+
         # stop point tracking if close enough
         if (state_est.xydist(self.state_des) < self.min_ptrack_dist_error and abs(error.theta) < self.min_ptrack_ang_error):
             self.point_tracked = True

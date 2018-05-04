@@ -40,12 +40,10 @@ class E160_MP:
         self.node_list = []
         self.num_nodes = 0
         self.goal_node = goal_node
-
+        print("updating plan")
         # Add Code: set the variable self.start_node and add it to the PRM
-
-
-
-
+        self.start_node = self.Node(start_robot_state.x, start_robot_state.y)
+        self.addNode(self.start_node)
 
         return self.MotionPlanner(goal_node)
 
@@ -73,7 +71,8 @@ class E160_MP:
                 Node '''
         cell_length = len(self.cell_grid.keys())
         random_cell_num = int(random.random() * cell_length)
-        random_key = self.cell_grid.keys()[random_cell_num]
+        # print(self.cell_grid.keys())
+        random_key = list(self.cell_grid.keys())[random_cell_num]
         random_node_num = int(random.random() * len(self.cell_grid[random_key]))
         return self.cell_grid[random_key][random_node_num]
 
@@ -98,6 +97,7 @@ class E160_MP:
         # while loop to continue add node until one of the criteria
         # is met
         while(iteration < self.MAX_NODE_NUMBER and path_found == False):
+            print("looking for goal")
 
             # Add Code: randomly select an expansion node
             expanded_node = self.select_expansion_node()
@@ -122,11 +122,9 @@ class E160_MP:
                 expanded_node.children.append(new_node)
 
 
-
-
-
                 # Add Code: check if stopping criteria is met or not
-            if(not self.check_collision(new_node, self.goal_node)):
+            if(not self.check_collision(new_node, self.goal_node, self.collision_tolerance)):
+                print("Found goal!")
                 goal_node.parent = new_node
                 new_node.children.append(goal_node)
                 path_found = True
@@ -172,10 +170,10 @@ class E160_MP:
         # Loop through all the walls in the environment
         for wall in self.environment.walls:
             #for each wall, check for collision for each of the four line
-            p1 = wall.points[:2]
-            p2 = wall.points[2:4]
-            p3 = wall.points[4:6]
-            p4 = wall.points[6:8]
+            p1 = [wall.wall_points[0], wall.wall_points[1]]
+            p2 =[wall.wall_points[0], wall.wall_points[1]]
+            p3 = [wall.wall_points[2], wall.wall_points[3]]
+            p4 = [wall.wall_points[2], wall.wall_points[3]]
             line_p1 = self.Node(p1[0] - tolerance, p1[1] + tolerance)
             line_p2 = self.Node(p2[0] + tolerance, p2[1] + tolerance)
             line_p3 = self.Node(p3[0] + tolerance, p3[1] - tolerance)

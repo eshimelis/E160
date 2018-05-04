@@ -33,6 +33,9 @@ class E160_graphics:
         self.rotate_control = Scale(self.tk, from_=-100, to=100, length  = 400,label="Rotate Control",tickinterval=50, orient=HORIZONTAL)
         self.rotate_control.pack(side=RIGHT)
 
+        # add stop button
+        self.mp_button = Button(self.tk, text="Motion Plan", anchor="s", wraplength=100, command=self.motion_plan).pack()
+
         # add track point button
         self.track_point_button = Button(self.tk, text="Track Point", anchor="s", wraplength=100, command=self.track_point).pack()
 
@@ -308,6 +311,25 @@ class E160_graphics:
             theta_des = float(self.theta_des_entry.get())
             r.state_des.set_state(x_des,y_des,theta_des)
             r.point_tracked = False
+    
+    def motion_plan(self):
+        self.environment.control_mode = "AUTONOMOUS CONTROL MODE"
+                
+        # update sliders on gui
+        self.forward_control.set(0)
+        self.rotate_control.set(0)
+        self.last_forward_control = 0
+        self.last_rotate_control = 0
+        self.R = 0
+        self.L = 0
+        
+        # draw robots
+        for r in self.environment.robots:
+            x_des = float(self.x_des_entry.get())
+            y_des = float(self.y_des_entry.get())
+            theta_des = float(self.theta_des_entry.get())
+            r.state_des.set_state(x_des,y_des,theta_des)
+            r.replan_path = True
 
     def track_waypoint(self):
         self.environment.control_mode = "AUTONOMOUS CONTROL MODE"
