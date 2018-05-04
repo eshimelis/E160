@@ -13,7 +13,7 @@ class E160_robot:
 
     def __init__(self, environment, address, robot_id):
         self.environment = environment
-        
+
         # estimated state
         self.state_est = E160_state()
         self.state_est.set_state(0,0,0)
@@ -23,7 +23,7 @@ class E160_robot:
 
         self.state_est_prev = E160_state()
         self.state_est_prev.set_state(0,0,0)
-        
+
         # desired state
         self.state_des = E160_state()
         self.state_des.set_state(0,0,0)
@@ -101,7 +101,7 @@ class E160_robot:
 
         self.last_simulated_encoder_R = 0
         self.last_simulated_encoder_L = 0
-            
+
         self.min_ptrack_dist_error = 0.05   # meters
         self.min_ptrack_ang_error = 0.05    # radians
 
@@ -126,7 +126,7 @@ class E160_robot:
 
             self.min_ptrack_dist_error = 0.05   # meters
             self.min_ptrack_ang_error = 0.05    # radians
-        
+
         self.point_tracked = True
         self.encoder_per_sec_to_rad_per_sec = 10
 
@@ -141,19 +141,19 @@ class E160_robot:
         #              E160_state(3, 0.71, 0), E160_state(3, 0.71, -math.pi),
         #              E160_state(0.875, 0.71, -math.pi), E160_state(0.875, 0.71, math.pi/2),
         #              E160_state(1.75/2,3, math.pi/2), E160_state(0.875, 0.71, -math.pi)]
-                     
+
         # self.path = [E160_state(0.25, -0.25, 0), E160_state(0.25, -0.25, math.pi/2),
         #             E160_state(0.25, 0.25, math.pi/2), E160_state(0.25, 0.25, math.pi),
         #             E160_state(-0.75, 0.25, math.pi), E160_state(-0.75, 0.25, 0),
-        #             E160_state(0.25, 0.25, 0), E160_state(0.25, 0.25, math.pi/2), 
+        #             E160_state(0.25, 0.25, 0), E160_state(0.25, 0.25, math.pi/2),
         #             E160_state(0.25, -0.25, math.pi/2), E160_state(0.25, -0.25, 0),
         #             E160_state(-0.75, -0.25, 0)]
         # self.path = [E160_state(0.5, 0, 1.57), E160_state(0.5, 0.5, 3.14),
         #              E160_state(0, 0.5, 3.14+1.57), E160_state(0, 0, 0),
 
         #              E160_state(0.25, 0.25, 1.57), E160_state(0, 0, 0),
-        #              E160_state(0.25, 0, 1.57), E160_state(0, 0, 0), 
-        #              E160_state(0, 0.25, 0), E160_state(0, 0, 0), 
+        #              E160_state(0.25, 0, 1.57), E160_state(0, 0, 0),
+        #              E160_state(0, 0.25, 0), E160_state(0, 0, 0),
         #              E160_state(0, 0.25, -1.57), E160_state(0, 0, 0),
         #              E160_state(-0.25, 0, 3.14), E160_state(0, 0, 0),
         #              E160_state(0.25, 0, 3.14), E160_state(0, 0, 0)]
@@ -166,20 +166,20 @@ class E160_robot:
         #              E160_state(0, 0.5, 3.14+1.57), E160_state(0, 0, 0),
 
         #              E160_state(0.25, 0.25, 1.57), E160_state(0, 0, 0),
-        #              E160_state(0.25, 0, 1.57), E160_state(0, 0, 0), 
-        #              E160_state(0, 0.25, 0), E160_state(0, 0, 0), 
+        #              E160_state(0.25, 0, 1.57), E160_state(0, 0, 0),
+        #              E160_state(0, 0.25, 0), E160_state(0, 0, 0),
         #              E160_state(0, 0.25, -1.57), E160_state(0, 0, 0),
         #              E160_state(-0.25, 0, 3.14), E160_state(0, 0, 0),
         #              E160_state(0.25, 0, 3.14), E160_state(0, 0, 0)]
 
         # self.path = [E160_state(0, 0, 0.2), E160_state(0, 0, -0.2), E160_state(0, 0, 0),
-        #              E160_state(0, 0, 1.57), E160_state(0, 0, -1.57), E160_state(0, 0, 0), 
+        #              E160_state(0, 0, 1.57), E160_state(0, 0, -1.57), E160_state(0, 0, 0),
         #              E160_state(0, 0, 3.14), E160_state(0, 0, 0), E160_state(0, 0, -3.14), E160_state(0, 0, 2), E160_state(0, 0, -2)]
 
         state_offset = [0, 0, 0]
         self.state_filter = E160_state()
         self.state_filter.set_state(self.state_odo.x+state_offset[0], self.state_odo.y+state_offset[1], self.state_odo.theta+state_offset[2])
-        
+
         # create filter
         self.PF = E160_PF(environment, self.width, self.wheel_radius, self.encoder_resolution, initialState = self.state_filter.copy())
         self.UKF = E160_UKF(environment, self.DIM, self.width, self.wheel_radius, self.encoder_resolution, initialState = self.state_filter.copy())
@@ -206,6 +206,11 @@ class E160_robot:
         # update simulated real position, find ground truth for simulation
         self.state_odo = self.localize(self.state_odo, delta_s, delta_theta, self.range_measurements)
 
+        # # localize with odometry
+        # self.state_est = self.state_odo
+
+
+
         # add encoder noise only to simulation
         if self.environment.control_mode == "SIMULATION MODE":
             delta_s += np.random.normal(0, self.s_std)
@@ -220,7 +225,7 @@ class E160_robot:
 
         # localize with particle filter
         # self.state_est_PF = self.PF.LocalizeEstWithParticleFilter(delta_s, delta_theta, self.range_measurements)
-        
+
         # testing
         self.state_est_PF = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
 
@@ -229,11 +234,15 @@ class E160_robot:
         # augmented ukf testing
         # self.state_est_AUKF = self.AUKF.LocalizeEstWithUKF(delta_s, delta_theta, self.range_measurements)
 
-        # print(self.state_est) 
+        # print(self.state_est)
         self.state_est = self.state_odo
 
-        # to output the true location for display purposes only. 
+        # to output the true location for display purposes only.
         self.state_draw = self.state_odo
+
+         # call motion planner
+         self.motion_plan()
+         self.track_trajectory()
 
         # determine new control signals
         self.R, self.L = self.update_control(self.range_measurements)
@@ -265,16 +274,16 @@ class E160_robot:
 
             # convert range_measurements to m using non linear inverse fit and offset its location
             for i in range(len(range_measurements)):
-                
+
                 x = range_measurements[i]
 
                 range_measurements[i] = (c[0] + c[1]/(x**c[2]))/100.0 + self.sensor_offset[i]
-        
+
             # # keep track of measurement
             # if len(self.last_measurements) < self.MAX_PAST_MEASUREMENTS:
             #     self.last_measurements.append(range_measurements)
 
-            # else: 
+            # else:
             #     self.last_measurements.pop(0)
             #     self.last_measurements.append(range_measurements)
 
@@ -310,7 +319,7 @@ class E160_robot:
             # desiredDistance = 30
 
             # integralError = [x[0] - desiredDistance for x in self.last_measurements]
-            
+
             # self.error = range_measurements[0] - desiredDistance
             # self.control_effort = KPGain * self.error + KIGain*sum(integralError)
 
@@ -318,7 +327,7 @@ class E160_robot:
             # L = self.control_effort
 
         elif self.environment.control_mode == "MOVE FORWARD MODE":
-            
+
             KPGain = 100
             KIGain = 10
             self.move_forward_error = self.state_des.x - self.state_est.x
@@ -327,12 +336,12 @@ class E160_robot:
             if len(self.last_move_forward_measurements) < self.MAX_PAST_MEASUREMENTS:
                 self.last_move_forward_measurements.append(self.move_forward_error)
 
-            else: 
+            else:
                 self.last_move_forward_measurements.pop(0)
                 self.last_move_forward_measurements.append(self.move_forward_error)
 
             # integralError = [x[0] - desiredDistance for x in self.last_measurements]
-            
+
             self.control_effort = KPGain *self.move_forward_error + KIGain*sum(self.last_move_forward_measurements)
             self.control_effort = min(max(self.control_effort, -40), 40)
             # angle correction
@@ -358,24 +367,24 @@ class E160_robot:
 
         # state_est = self.state_est_UKF
 
-        # calculate state error 
+        # calculate state error
         # self.state_error = self.state_des-state_est
         error = self.state_error
 
         # stop point tracking if close enough
-        if (state_est.xydist(self.state_des) < self.min_ptrack_dist_error and abs(error.theta) < self.min_ptrack_ang_error): 
+        if (state_est.xydist(self.state_des) < self.min_ptrack_dist_error and abs(error.theta) < self.min_ptrack_ang_error):
             self.point_tracked = True
-        else: 
+        else:
             self.point_tracked = False
 
         if not self.point_tracked:
             alpha = util.ang_diff(math.atan2(error.y, error.x), state_est.theta)
-            
+
             # forwards
             if alpha <= math.pi/2 and alpha >= -math.pi/2:
                 if (math.sqrt(error.x**2 + error.y**2) < self.min_ptrack_dist_error):
                     rho = 0
-                    alpha = 0                    
+                    alpha = 0
                     beta = -error.theta
                 else:
                     rho = math.sqrt(error.x**2 + error.y**2)
@@ -397,11 +406,11 @@ class E160_robot:
 
 
             w = self.Kalpha*alpha + self.Kbeta*beta
-            
+
             # limit maximum linear and angular velocity
             w = max(min(w, self.max_ang_velocity), -self.max_ang_velocity)
             v = max(min(v, self.max_velocity), -self.max_velocity)
-            
+
             # compute wheel angular velocities
             w2 = ((v/self.radius)-w)/-2
             w1 = w - w2
@@ -409,7 +418,7 @@ class E160_robot:
             desiredWheelSpeedR = 2*self.radius*w1/self.wheel_radius * self.encoder_per_sec_to_rad_per_sec
             desiredWheelSpeedL = -2*self.radius*w2/self.wheel_radius * self.encoder_per_sec_to_rad_per_sec
 
-        else:            
+        else:
             self.point_tracked = False
             self.state_des = self.path[self.path_counter]
             self.path_counter = (self.path_counter+1)%len(self.path)
@@ -453,7 +462,7 @@ class E160_robot:
         left_encoder_measurement = -int(L*self.encoder_per_sec_to_rad_per_sec*deltaT) + self.last_simulated_encoder_L
         self.last_simulated_encoder_R = right_encoder_measurement
         self.last_simulated_encoder_L = left_encoder_measurement
-        
+
         #print "simulate_encoders", R, L, right_encoder_measurement, left_encoder_measurement
         return [left_encoder_measurement, right_encoder_measurement]
 
@@ -535,10 +544,10 @@ class E160_robot:
         self.sl += delta_s_left
         self.sr += delta_s_right
 
-        return delta_s, delta_theta 
-     
+        return delta_s, delta_theta
+
     def update_state(self, state, delta_s, delta_theta):
-        
+
         delta_x = delta_s * math.cos(state.theta + delta_theta/2)
         delta_y = delta_s * math.sin(state.theta + delta_theta/2)
 
@@ -550,9 +559,8 @@ class E160_robot:
         # keep track of previous error
         if len(self.previous_state_error) < self.MAX_PAST_MEASUREMENTS:
                 self.previous_state_error.append(self.state_error)
-        else: 
+        else:
             self.previous_state_error.pop(0)
             self.previous_state_error.append(self.state_error)
 
         return state
-

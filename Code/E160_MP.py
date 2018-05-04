@@ -29,21 +29,24 @@ class E160_MP:
        self.expansion_range = 0.4
        self.robot_radius = robot_radius
 
-       start_node = self.Node(start_robot_state.x, start_robot_state.y)
-       self.start_node = start_node
+       self.start_node = self.Node(start_robot_state.x, start_robot_state.y)
+       # self.start_node = start_node
        self.addNode(self.start_node)
+       self.max_expansion_dist = .5
+       self.collision_tolerance = .1
 
     def update_plan(self, start_robot_state, goal_node):
         self.cell_grid = {}
         self.node_list = []
         self.num_nodes = 0
+        self.goal_node = goal_node
 
         # Add Code: set the variable self.start_node and add it to the PRM
-        
-        
-        
-        
-        
+
+
+
+
+
         return self.MotionPlanner(goal_node)
 
     def addNode(self, n):
@@ -56,7 +59,7 @@ class E160_MP:
             self.cell_grid[col, row] = [n]
         n.index = self.num_nodes
         self.node_list.append(n)
-        self.num_nodes += 1 
+        self.num_nodes += 1
 
     def getCellNumbder(self, n):
         '''Calculate x and y indices for a given node '''
@@ -95,41 +98,54 @@ class E160_MP:
         # while loop to continue add node until one of the criteria
         # is met
         while(iteration < self.MAX_NODE_NUMBER and path_found == False):
-            
+
             # Add Code: randomly select an expansion node
- 
+            expanded_node = self.select_expansion_node()
+
+
 
 
 
 
             # Add Code: From the expansion node, create a new node
+            dist = np.random.uniform(0,self.max_expansion_dist)
+            angle = np.random.uniform(0, 2*math.pi)
+            new_x = expanded_node.x + dist*math.cos(angle)
+            new_y = expanded_node.y + dist*math.sin(angle)
+            new_node = self.Node(new_x, new_y, expanded_node, index = expanded_node.index + 1)
 
-    
 
             # Add Code: check collision for the expansion
             #if ...
-            
-            
-            
-            
-            
-                # Add Code: check if stopping criteria is met or not
+            if(!self.check_collision(expanded_node, new_node, self.collision_tolerance))
+                self.addNode(new_node)
+                expanded_node.children.append(new_node)
 
+
+
+
+
+                # Add Code: check if stopping criteria is met or not
+            if(!self.check_collision(new_node, self.goal_node))
+                goal_node.parent = new_node
+                new_node.children.append(goal_node)
+                path_found = True
                 
-                
-                
-            
+
+
+
+
             # keep track of the number of attempted expansions
             iteration += 1
-            
+
         # build the trajectory
         self.traj_node_list = self.build_trajectory(goal_node)
-        
+
         # return the trajectory
         return self.traj_node_list
 
-    
-    
+
+
     def build_trajectory(self, goal_node):
         '''Given a goal_node, build a trajectory from start to goal
             Args:
@@ -170,8 +186,8 @@ class E160_MP:
             b2 = self.check_line_collision(node1, node2, line_p2, line_p3)
             b3 = self.check_line_collision(node1, node2, line_p3, line_p4)
             b4 = self.check_line_collision(node1, node2, line_p4, line_p1)
-            
-            # if there is a collision, 
+
+            # if there is a collision,
             if (b1 or b2 or b3 or b4):
                 return True
             # else
@@ -200,7 +216,7 @@ class E160_MP:
             d1 = 0.001
         s = (-s1_y * (node1.x - line1.x) + s1_x * (node1.y - line1.y)) / d1
         t = ( s2_x * (node1.y - line1.y) - s2_y * (node1.x - line1.x)) / d1
-        
+
         # intersect
         i_x = 0
         i_y = 0
@@ -221,6 +237,6 @@ class E160_MP:
 
         def __str__(self):
             return str(self.x) + " " + str(self.y)
-        
+
         def __repr__(self):
             return '[' + str(self.x) + "," + str(self.y) + "," + str(self.index) +  ']'
