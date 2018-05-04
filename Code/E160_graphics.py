@@ -142,6 +142,10 @@ class E160_graphics:
         for r in self.environment.robots:
             self.initial_draw_robot(r)
 
+        self.drawn_rrt = False
+        self.RRT = []
+        self.path = []
+
     # draws walls on gui
     def draw_wall(self, wall):
 
@@ -443,6 +447,43 @@ class E160_graphics:
         self.y.set("Y (m):  " + str(self.environment.robots[0].state_est.y))
         self.theta.set("Theta (rad):  " + str(self.environment.robots[0].state_est.theta))
 
+    def draw_rrt_help(self, node):
+        # print node
+        if node == None:
+            pass
+        else:
+            for child in node.children:
+                node_point = self.scale_points([node.x, node.y], self.scale)
+                child_point = self.scale_points([child.x, child.y], self.scale)
+                self.RRT.append(self.canvas.create_line(node_point, child_point, fill="gray"))
+                self.draw_rrt_help(child)
+
+    def draw_trajectory(self):
+        for r in self.environment.robots:
+            node_list = r.MP.node_list
+            for i in range(len(r.MP.traj_node_list) - 1):
+                next_node = node_list[r.MP.traj_node_list[i + 1]]
+                current_node = node_list[r.MP.traj_node_list[i]]
+
+                current_point = self.scale_points([current_node.x, current_node.y], self.scale)
+                next_point = self.scale_points([next_node.x, next_node.y], self.scale)
+                self.path.append(self.canvas.create_line(current_point, next_point, fill = "red"))
+
+    def draw_rrt(self):
+        if self.drawn_rrt == False:
+            for branch in self.RRT:
+                self.canvas.delete(branch)
+            for path in self.path:
+                self.canvas.delete(path)
+            for r in self.environment.robots:
+                robot_mp = r.MP
+                head_node = r.MP.node_list[0]
+                self.draw_rrt_help(head_node)
+                self.draw_trajectory()
+            self.drawn_rrt = True
+        else:
+            pass
+
     # called at every iteration of main loop
     def update(self):
 
@@ -461,6 +502,9 @@ class E160_graphics:
 
         # update desired state arrow
         # self.update_gui_des(des_robot_state)
+
+        # draw path
+        self.draw_rrt()
 
         # update the graphics
         self.tk.update()

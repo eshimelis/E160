@@ -117,7 +117,7 @@ class E160_MP:
 
             # Add Code: check collision for the expansion
             #if ...
-            if(!self.check_collision(expanded_node, new_node, self.collision_tolerance))
+            if(not self.check_collision(expanded_node, new_node, self.collision_tolerance)):
                 self.addNode(new_node)
                 expanded_node.children.append(new_node)
 
@@ -126,7 +126,7 @@ class E160_MP:
 
 
                 # Add Code: check if stopping criteria is met or not
-            if(!self.check_collision(new_node, self.goal_node))
+            if(not self.check_collision(new_node, self.goal_node)):
                 goal_node.parent = new_node
                 new_node.children.append(goal_node)
                 path_found = True

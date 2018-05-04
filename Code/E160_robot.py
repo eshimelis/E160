@@ -2,6 +2,7 @@ from E160_state import *
 from E160_PF import *
 from E160_UKF import *
 from E160_AUKF import *
+from E160_MP import *
 
 import util
 import math
@@ -38,6 +39,9 @@ class E160_robot:
         self.state_odo = E160_state()
         self.state_odo.set_state(0.875/2,3.1,-math.pi/2) # real position for simulation
         # self.state_odo.set_state(0,0,0) # real position for simulation
+
+        self.state_curr_dest = E160_state()
+        self.state_curr_dest.set_state(0.0,0.0,0.0)
 
         # dimension of robot state space
         self.DIM = 3
@@ -185,6 +189,14 @@ class E160_robot:
         self.UKF = E160_UKF(environment, self.DIM, self.width, self.wheel_radius, self.encoder_resolution, initialState = self.state_filter.copy())
         self.AUKF = E160_AUKF(environment, self.DIM, self.width, self.wheel_radius, self.encoder_resolution, initialState = self.state_filter.copy())
 
+        self.trajectory = []
+        self.path_counter = 0
+
+        # add motion planner
+        self.MP = E160_MP(environment, self.state_odo, self.radius)
+        self.build_path([0], self.MP.node_list)
+        self.replan_path = False
+
         # simluation noise parameters
         self.s_std = 0.001
         self.theta_std = 0.05
@@ -240,15 +252,60 @@ class E160_robot:
         # to output the true location for display purposes only.
         self.state_draw = self.state_odo
 
-         # call motion planner
-         self.motion_plan()
-         self.track_trajectory()
+        # call motion planner
+        self.motion_plan()
+        self.track_trajectory()
 
         # determine new control signals
         self.R, self.L = self.update_control(self.range_measurements)
 
         # send the control measurements to the robot
         self.send_control(self.R, self.L, deltaT)
+
+    def motion_plan(self):
+        if (self.replan_path == True):
+            # Reset destination
+            self.path_counter = 0
+            self.state_curr_dest = self.state_est
+
+            # Set goal node
+            goal_node = E160_MP.Node(self.state_des.x, self.state_des.y)
+
+            # Generate path with RRT
+            node_indices = self.MP.update_plan(self.state_odo, goal_node)
+            self.build_path(node_indices, self.MP.node_list)
+            self.replan_path = False
+        else:
+            pass
+    
+    def build_path(self, node_indices, node_list):
+        '''Update the trajectory using the node indices return by the path
+        planner'''
+        self.trajectory = []
+        prev_node = node_list[0]
+        self.trajectory.append(E160_state(prev_node.x, prev_node.y, 0))
+        for index in node_indices[1:]:
+            current_node = node_list[index]
+            prev_node = node_list[index-1]
+            desired_angle = -self.angle_wrap(math.atan2(current_node.y -prev_node.y, 
+                current_node.x - prev_node.x))
+            desired_state = E160_state(current_node.x, current_node.y, 0)
+            self.trajectory.append(desired_state)
+    
+    def track_trajectory(self):
+        '''Update the self.state_curr_dest for the point tracker  '''
+        
+        # calculate state error 
+        self.state_error = self.state_curr_dest-self.state_est
+        error = self.state_error
+
+        if (self.state_est.xydist(self.state_curr_dest) < self.min_ptrack_dist_error and abs(error.theta) < self.min_ptrack_ang_error): 
+            self.point_tracked = True
+            self.state_curr_dest = self.trajectory[self.path_counter]
+            if self.path_counter < len(self.trajectory) - 1:
+                self.path_counter = self.path_counter+1
+        else: 
+            self.point_tracked = False
 
     def update_sensor_measurements(self, deltaT):
 
@@ -371,6 +428,8 @@ class E160_robot:
         # self.state_error = self.state_des-state_est
         error = self.state_error
 
+        self.state_des = self.state_curr_dest
+        
         # stop point tracking if close enough
         if (state_est.xydist(self.state_des) < self.min_ptrack_dist_error and abs(error.theta) < self.min_ptrack_ang_error):
             self.point_tracked = True
