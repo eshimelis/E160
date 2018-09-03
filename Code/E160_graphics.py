@@ -111,7 +111,7 @@ class E160_graphics:
         # desired and estimated state arrow
         self.arrow_des = self.canvas.create_line(0, 0, 0, 0, tags=("des_arrow",), arrow="last", fill="orange red", width=8)
         self.arrow_temp_des = self.canvas.create_line(0, 0, 0, 0, tags=("temp_des_arrow",), arrow="last", fill="forest green", width=8)
-        self.arrow_odo = self.canvas.create_line(0, 0, 0, 0, tags=("odo_arrow",), arrow="last", fill="steel blue", width=4)
+        self.arrow_odo = self.canvas.create_line(0, 0, 0, 0, tags=("odo_arrow",), arrow="last", fill="steel blue", width=5)
         self.arrow_est_pf = self.canvas.create_line(0, 0, 0, 0, tags=("pf_est_arrow",), arrow="last", fill="purple4", width=4)
         self.arrow_est_ukf = self.canvas.create_line(0, 0, 0, 0, tags=("ukf_est_arrow",), arrow="last", fill="tomato", width=4)
 
@@ -491,7 +491,7 @@ class E160_graphics:
 
                 current_point = self.scale_points([current_node.x, current_node.y], self.scale)
                 next_point = self.scale_points([next_node.x, next_node.y], self.scale)
-                self.path.append(self.canvas.create_line(current_point, next_point, fill = "red"))
+                self.path.append(self.canvas.create_line(current_point, next_point, fill = "darkgreen", width=3))
 
     def draw_rrt(self):
         if self.drawn_rrt == False:
@@ -504,7 +504,7 @@ class E160_graphics:
                 head_node = r.MP.node_list[0]
                 self.draw_rrt_help(head_node)
                 self.draw_trajectory()
-            self.drawn_rrt = True
+            # self.drawn_rrt = True
         else:
             pass
 
@@ -529,7 +529,6 @@ class E160_graphics:
 
         # draw path
         self.draw_rrt()
-        self.draw_trajectory()
 
         # update the graphics
         self.tk.update()

@@ -33,7 +33,7 @@ class E160_MP:
        # self.start_node = start_node
        self.addNode(self.start_node)
 
-       self.min_expansion_dist = 0.75
+       self.min_expansion_dist = 0.4
        self.max_expansion_dist = 1
        self.collision_tolerance = 0.05
 
@@ -110,8 +110,6 @@ class E160_MP:
             angle = np.random.uniform(0, 2*math.pi)
             new_x = expanded_node.x + dist*math.cos(angle)
             new_y = expanded_node.y + dist*math.sin(angle)
-            # print("Expanded Node: (", expanded_node.x, ", ", expanded_node.y, ")")
-            # print("New Node: (", new_x, ", ", new_y, ")")
             new_node = self.Node(new_x, new_y, parent=expanded_node, index = expanded_node.index + 1)
 
             #check expansion for the collision
@@ -165,7 +163,7 @@ class E160_MP:
         for wall in self.environment.walls:
             #for each wall, check for collision for each of the four line
             p1 = [wall.wall_points[0], wall.wall_points[1]]
-            p2 =[wall.wall_points[0], wall.wall_points[1]]
+            p2 = [wall.wall_points[0], wall.wall_points[1]]
             p3 = [wall.wall_points[2], wall.wall_points[3]]
             p4 = [wall.wall_points[2], wall.wall_points[3]]
             line_p1 = self.Node(p1[0] - tolerance, p1[1] + tolerance)
@@ -179,9 +177,11 @@ class E160_MP:
             b3 = self.check_line_collision(node1, node2, line_p3, line_p4)
             b4 = self.check_line_collision(node1, node2, line_p4, line_p1)
 
-            # print("Node1: ", node1)
-            # print("Node2: ", node2)
-            # print("Collision? ", b1 or b2 or b3 or b4, "\n")
+            # p1 = [wall.wall_points[0], wall.wall_points[1]]
+            # p2 = [wall.wall_points[2], wall.wall_points[3]]
+            # line_p1 = self.Node(p1[0], p1[1])
+            # line_p2 = self.Node(p2[0], p2[1])
+            # b1 = self.check_line_collision(node1, node2, line_p1, line_p2)
 
             # if there is a collision,
             if (b1 or b2 or b3 or b4):

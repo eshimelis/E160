@@ -240,6 +240,7 @@ class E160_robot:
         # testing
         # self.state_est_PF = self.PF.LocalizeEstWithParticleFilterEncoder(self.encoder_measurements, self.range_measurements)
 
+        # ukf
         # self.state_est_UKF = self.UKF.LocalizeEstWithUKF(delta_s, delta_theta, self.range_measurements)
 
         # augmented ukf testing
@@ -285,13 +286,6 @@ class E160_robot:
         self.trajectory = []
         prev_node = node_list[0]
         self.trajectory.append(E160_state(prev_node.x, prev_node.y, 0))
-        # for index in node_indices[1:]:
-        #     current_node = node_list[index]
-        #     prev_node = node_list[index-1]
-        #     desired_angle = util.angle_wrap(math.atan2(prev_node.y-current_node.y, 
-        #         prev_node.x - current_node.x))
-        #     desired_state = E160_state(current_node.x, current_node.y, desired_angle)
-        #     self.trajectory.append(desired_state)
 
         for i in range(1,len(node_indices)):
             current_node = node_list[node_indices[i]]

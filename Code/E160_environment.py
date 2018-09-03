@@ -59,7 +59,7 @@ class E160_environment:
 
         ## Parsons corner map [x1, y1, x2, y2] (Next to Lab/Room 2391)
         wall1a = [0, 0, 0, 0.94]
-        wall1b = [0, 1.85, 0, 4]
+        wall1b = [0, 1.85, 0, 4.01]
 
         door1a = [-0.12, 0.94, -0.12, 1.85]
         door1b = [-0.12, 0.94, 0, 0.94]
@@ -70,8 +70,6 @@ class E160_environment:
         wall4 = [1.75, 1.8, 1.75+0.87, 1.8]
         wall5 = [1.75+0.87, 1.8, 1.75+0.87, 1.8-0.38]
         wall6 = [1.75+0.87, 1.8-0.38, 4, 1.8-0.38]
-
-        
 
         self.walls.append(E160_wall(wall1a))
         self.walls.append(E160_wall(wall1b))
@@ -99,7 +97,7 @@ class E160_environment:
         self.control_mode = "MANUAL CONTROL MODE"
 
         if self.robot_mode == "SIMULATION MODE":
-            endcap1 = [0, 4, 1.75, 4]
+            endcap1 = [-0.01, 4, 1.75, 4]
             endcap2 = [4, 0, 4, 1.8-0.38]
             self.walls.append(E160_wall(endcap1))
             self.walls.append(E160_wall(endcap2))
